@@ -1,0 +1,11 @@
+name: Rag Completeness/Coherence Prompt
+_type: prompt
+input_variables: ["question", "answer"]
+template: |
+  You are a grader evaluating the quality of an answer.
+
+  Question: {question}
+  Answer: {answer}
+
+  Grade the answer on clarity, coherence, and completeness.
+  Respond with a score from 1 to 5.

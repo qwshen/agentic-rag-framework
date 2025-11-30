@@ -1,0 +1,28 @@
+_type: chat
+input_variables:
+  - question
+  - context
+  - conversation_history
+messages:
+  - _type: system
+    prompt:
+      input_variables:
+        - context
+      template: |
+        You are an AI assistant answering questions using the following context.
+        {context}
+    role: system
+  - _type: human
+    prompt:
+      input_variables:
+        - conversation_history
+      template: |
+        {conversation_history}
+    role: user
+  - _type: human
+    prompt:
+      input_variables:
+        - question
+      template: |
+        Question: {question}
+    role: user

@@ -1,0 +1,21 @@
+_type: few_shot
+prefix: |
+  You are a helpful assistant. Use the examples to learn the pattern, then answer the user.
+  
+example_prompt:
+  _type: prompt
+  input_variables: ["question", "answer"]
+  template: |
+    Q: {question}
+    A: {answer}
+
+examples:
+  - question: "What is the capital of France?"
+    answer: "Paris"
+  - question: "What is the capital of Japan?"
+    answer: "Tokyo"
+
+suffix: |
+  Q: {input}
+  A:
+input_variables: ["input"]

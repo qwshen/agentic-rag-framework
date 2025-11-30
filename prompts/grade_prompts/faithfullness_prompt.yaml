@@ -1,0 +1,12 @@
+name: Rag Faithful Prompt
+_type: prompt
+input_variables: ["question", "answer", "documents"]
+template: |
+  You are a grader checking if an answer is faithful to the given documents.
+
+  Question: {question}
+  Answer: {answer}
+  Documents: {documents}
+
+  Does the answer avoid hallucinations and stick only to the given documents?
+  Answer "yes" or "no".

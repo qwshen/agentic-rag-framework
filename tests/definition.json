@@ -1,0 +1,382 @@
+{
+    "indexing_def": [
+        {
+            "name": "rag_test",
+            "loading": {
+                "actors": [
+                    {
+                        "actor": {
+                            "type": "document.loading.file.FileLoader",
+                            "kwargs": {
+                                "directory": "${DOCUMENTS_DIRECTORY}/qai/pdf",
+                                "file_extensions": ".pdf",
+                                "worker": {
+                                    "type": "langchain_community.document_loaders.pdf.PyPDFLoader",
+                                    "kwargs": {
+                                        "extract_images": false
+                                    }
+                                }
+                            }
+                        },
+                        "scheduler": {
+                            "type": "common.schedule.FileArrivalTrigger",
+                            "kwargs": {
+                                "directory": "${DOCUMENTS_DIRECTORY}/qai/pdf",
+                                "recursive": true
+                            }        
+                        }
+                    },                    
+                    {
+                        "actor": {
+                            "type": "document.loading.file.FileLoader",
+                            "kwargs": {
+                                "directory": "${DOCUMENTS_DIRECTORY}/qai/txt",
+                                "recursive": false,
+                                "file_extensions": ".txt", 
+                                "worker": {
+                                    "type": "langchain_community.document_loaders.text.TextLoader",
+                                    "kwargs": {
+                                        "autodetect_encoding": true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                ],
+                "scheduler": {
+                    "type": "common.schedule.CronScheduler",
+                    "kwargs": {
+                        "crons": ["0 0 * * *"]
+                    }
+                }
+            },
+            "splitting": {
+                "actor":{
+                    "type": "document.splitting.text.TextSplitter",
+                    "kwargs": {
+                        "worker": {
+                            "type": "langchain_text_splitters.character.RecursiveCharacterTextSplitter",
+                            "kwargs": { 
+                                "chunk_size": 1600,
+                                "chunk_overlap": 320
+                            }
+                        }
+                    }
+                },
+                "concurrency": {
+                    "max_workers": 6
+                }
+            },
+            "vectorizing": {
+                "actor": {
+                    "type": "document.indexing.pgvector.PgvectorIndexer",
+                    "kwargs": {
+                        "embeddings": {
+                            "type": "langchain_ollama.OllamaEmbeddings",
+                            "kwargs": {
+                                "model":"${LLM_EMBEDDINGS_MODEL}",
+                                "base_url": "${LLM_INFERENCE}"
+                            }
+                        },
+                        "connection": "postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PWD}@${POSTGRES_HOST}/${POSTGRES_DB}",
+                        "collection_name": "${POSTGRES_TABLE_QAI_RAG}"
+                    }
+                },
+                "concurrency": {
+                    "max_workers": 3
+                }
+            }
+        },
+        {
+            "name": "rag_learning",
+            "loading": {
+                "stages": [
+                    {
+                        "actor": {
+                            "type": "document.loading.file.FileLoader",
+                            "kwargs": {
+                                "directory": "${DOCUMENTS_DIRECTORY}/learning/pdf",
+                                "file_extensions": ".pdf",
+                                "worker": {
+                                    "type": "langchain_community.document_loaders.pdf.PyPDFLoader",
+                                    "kwargs": {
+                                        "extract_images": false
+                                    }
+                                }
+                            }
+                        },
+                        "scheduler": {
+                            "type": "common.schedule.FileArrivalTrigger",
+                            "kwargs": {
+                                "directory": "${DOCUMENTS_DIRECTORY}/learning/pdf",
+                                "recursive": true
+                            }        
+                        }
+                    },                    
+                    {
+                        "actor": {
+                            "type": "document.loading.file.FileLoader",
+                            "kwargs": {
+                                "directory": "${DOCUMENTS_DIRECTORY}/learning/docx",
+                                "recursive": true,
+                                "file_extensions": ".docx;.doc", 
+                                "worker": {
+                                    "type": "langchain_community.document_loaders.word_document.UnstructuredWordDocumentLoader",
+                                    "kwargs": {
+                                        "mode": "single"
+                                    }
+                                }
+                            }
+                        },
+                        "scheduler": {
+                            "type": "common.schedule.FileArrivalTrigger",
+                            "kwargs": {
+                                "directory": "${DOCUMENTS_DIRECTORY}/learning/docx",
+                                "recursive": true
+                            }        
+                        }
+                    },
+                    {
+                        "actor": {
+                            "type": "document.loading.file.FileLoader",
+                            "kwargs": {
+                                "directory": "${DOCUMENTS_DIRECTORY}/learning/txt",
+                                "recursive": false,
+                                "file_extensions": ".txt", 
+                                "worker": {
+                                    "type": "langchain_community.document_loaders.text.TextLoader",
+                                    "kwargs": {
+                                        "autodetect_encoding": true
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "actor": {
+                            "type": "document.loading.file.FileLoader",
+                            "kwargs": {
+                                "directory": "${DOCUMENTS_DIRECTORY}/csv",
+                                "file_pattern": "(.*)\\.txt$", 
+                                "worker": {
+                                    "type": "langchain_community.document_loaders.csv_loader.CSVLoader",
+                                    "kwargs": {
+                                        "csv_args": {
+                                            "delimiter": "\t",
+                                            "quotechar": "\"",
+                                            "fieldnames": ["user_Id", "time_stamp", "position", "latitude", "longitude", "comments"]
+                                        },
+                                        "metadata_columns": ["user_Id", "time_stamp", "position", "latitude", "longitude"]
+                                    }
+                                }
+                            }
+                        }                        
+                    }                    
+                ],
+                "scheduler": {
+                    "type": "common.schedule.CronScheduler",
+                    "kwargs": {
+                        "crons": ["0 0 * * FRI", "0 0 * * TUE"]
+                    }
+                }
+            },
+            "splitting": {
+                "actor": {
+                    "type": "document.splitting.text.TextSplitter",
+                    "kwargs": {
+                        "worker": {
+                            "type": "langchain_text_splitters.character.RecursiveCharacterTextSplitter",
+                            "kwargs": { 
+                                "chunk_size": 3200,
+                                "chunk_overlap": 320
+                            }
+                        }
+                    }
+                },
+                "concurrency": {
+                    "max_workers": 3
+                }
+            },
+            "vectorizing": {
+                "actor": {
+                    "type": "document.indexing.pgvector.PgvectorIndexer",
+                    "kwargs": {
+                        "embeddings": {
+                            "type": "langchain_ollama.OllamaEmbeddings",
+                            "kwargs": {
+                                "model":"${LLM_EMBEDDINGS_MODEL}",
+                                "base_url": "${LLM_INFERENCE}"
+                            }
+                        },
+                        "connection": "postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PWD}@${POSTGRES_HOST}/${POSTGRES_DB}",
+                        "collection_name": "${POSTGRES_TABLE_RAG_LEARNING}"
+                    }
+                },
+                "concurrency": {
+                    "max_workers": 2
+                }
+            }
+        }        
+    ],
+    "service_def": {
+        "context_stores": [
+            {
+                "name": "rag_test",
+                "actor":{
+                    "type": "document.indexing.pgvector.PgvectorIndexer",
+                    "kwargs": {
+                        "embeddings": {
+                            "type": "langchain_ollama.OllamaEmbeddings",
+                            "kwargs": {
+                                "model":"${LLM_EMBEDDINGS_MODEL}",
+                                "base_url": "${LLM_INFERENCE}"
+                            }
+                        },
+                        "connection": "postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PWD}@${POSTGRES_HOST}/${POSTGRES_DB}",
+                        "collection_name": "${POSTGRES_TABLE_QAI_RAG}"
+                    }
+                }
+            },
+            {
+                "name": "rag_learning",
+                "actor": {
+                    "type": "document.indexing.pgvector.PgvectorIndexer",
+                    "kwargs": {
+                        "embeddings": {
+                            "type": "langchain_ollama.OllamaEmbeddings",
+                            "kwargs": {
+                                "model":"${LLM_EMBEDDINGS_MODEL}",
+                                "base_url": "${LLM_INFERENCE}"
+                            }
+                        },
+                        "connection": "postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PWD}@${POSTGRES_HOST}/${POSTGRES_DB}",
+                        "collection_name": "${POSTGRES_TABLE_RAG_LEARNING}"
+                    }
+                }
+            }
+        ],
+        "prompts": [
+            {
+                "name": "rag_chat",
+                "actor": {
+                    "type": "langchain_core.prompts.loading.load_prompt",
+                    "kwargs": {
+                        "path": "${CHAT_PROMPT_FILE}"
+                    }
+                }                
+            },
+            {
+                "name": "rag_summarization",
+                "actor":{
+                    "type": "langchain_core.prompts.loading.load_prompt",
+                    "kwargs": {
+                        "path": "${SUMMARIZATION_PROMPT_FILE}"
+                    }
+                }
+            }
+        ],
+        "llm_models": [
+            {
+                "name": "llama3.1",
+                "actor": {
+                    "type": "langchain_ollama.llms.OllamaLLM",
+                    "model_key": "model",
+                    "kwargs": {
+                        "base_url": "${LLM_INFERENCE}"
+                    }
+                }
+            },
+            {
+                "name": "mistral:7b",
+                "actor": {
+                    "type": "langchain_ollama.llms.OllamaLLM",
+                    "model_key": "model",
+                    "kwargs": {
+                        "base_url": "${LLM_INFERENCE}"
+                    }
+                }
+            },
+            {
+                "name": "deepseek-r1:1.5b",
+                "actor": {
+                    "type": "langchain_ollama.llms.OllamaLLM",
+                    "model_key": "model",
+                    "kwargs": {
+                        "base_url": "${LLM_INFERENCE}"
+                    }
+                }
+            }
+        ]
+    },
+    "retrievals": [
+        {
+            "name": "rag_test",
+            "search": {
+                "type": "SIMILARITY",
+                "kwargs": {
+                    "k": 6,
+                    "fetch_k": 16,
+                    "score_threshold": 0.8,
+                    "filter": {
+                        "paper_title": "GPT-4 Technical Report"
+                    },
+                    "lambda_mult": 0.3
+                },
+                "target_store":"rag_test"
+            }
+        },
+        {
+            "name": "rag_learning",
+            "search": {
+                "type": "MMR",
+                "kwargs": {
+                    "k": 12,
+                    "fetch_k": 32,
+                    "score_threshold": 0.6,
+                    "lambda_mult": 0.5
+                },
+                "target_store":"rag_test"
+            }
+        }
+    ],
+    "services":[
+        {
+            "name": "rag_chat",
+            "definition": {
+                "retrieval": "rag_test",
+                "prompt": "rag_chat",
+                "llm_model": "llama3.1"
+            },
+            "access_roles": [
+                "technical_support", "system_admins", "app_developers"
+            ]
+        },
+        {
+            "name": "rag_summarization",
+            "definition": {
+                "retrieval": "rag_learning",
+                "prompt": "rag_summarization",
+                "llm_model": "mistral:7b"
+            },
+            "access_roles": [
+                "marketing_sales", "system_admins"
+            ]
+        }
+    ],
+    "searches": [
+        {
+            "name": "rag_test",
+            "definition": {
+                "retrieval": "rag_test"
+            },
+            "access_roles": [
+                "marketing_sales", "system_admins"
+            ]
+        }
+    ],
+    "logging": {
+        "directory": "${LOGS_DIRECTORY}",
+        "level": "debug"
+    }
+}
+

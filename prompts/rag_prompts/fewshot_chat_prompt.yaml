@@ -1,0 +1,21 @@
+_type: few_shot
+prefix: |
+  You are a math tutor. Use the examples, then solve the problem.
+
+example_prompt:
+  _type: chat
+  messages:
+    - role: human
+      content: "{question}"
+    - role: ai
+      content: "{answer}"
+
+examples:
+  - question: "What’s 2+2?"
+    answer: "4"
+  - question: "What’s 3+5?"
+    answer: "8"
+
+suffix: |
+  Q: {input}
+input_variables: ["input"]

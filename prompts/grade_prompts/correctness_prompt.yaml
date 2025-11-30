@@ -1,0 +1,12 @@
+name: Rag Correctness Prompt
+_type: prompt
+input_variables: ["question", "answer", "reference"]
+template: |
+  You are a grader checking the factual correctness of an answer.
+
+  Question: {question}
+  Answer: {answer}
+  Reference Answer: {reference}
+
+  If the answer matches the reference in meaning and correctness, respond "yes".
+  If it differs in key facts or is incorrect, respond "no".
