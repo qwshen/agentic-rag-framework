@@ -130,7 +130,6 @@ To query data inside:
  curl -X GET http://localhost:9200/customers/_search?pretty -ku admin:PwD4aDm@LoCAl
  ```
 
-
 #### 5. Qdrant
 
 The following example shows how to use Qdrant to persist customer documents. The database file is located at /opt/db/qdrant. Embeddings are generated using the Llama 3 model served by Ollama at http://127.0.0.1:11434.
@@ -144,7 +143,7 @@ The following example shows how to use Qdrant to persist customer documents. The
             "embedding": {
                 "type": "langchain_ollama.OllamaEmbeddings",
                 "kwargs": {
-                    "model":"llama3",
+                    "model": "llama3",
                     "base_url": "http://127.0.0.1:11434"
                 }
             },
@@ -160,186 +159,217 @@ The following example shows how to use Qdrant to persist customer documents. The
 }
 ```
 
+#### 6. Weaviate
+
+The following examples show how to use Weaviate to psersist customer documents in different deployment modes. 
 
 
-
+##### 6.1 Embedded mode with data file being located at /opt/db/weaviate/customers.
 
 ```json
-        {
-            "name": "rag_weaviate_embedded",
-            "actor": {
-                "type": "document.store.weaviate.WeaviateVS",
+{
+    "name": "rag_weaviate_embedded",
+    "actor": {
+        "type": "document.store.weaviate.WeaviateVS",
+        "kwargs": {
+            "embeddings": {
+                "type": "langchain_ollama.OllamaEmbeddings",
                 "kwargs": {
-                    "embeddings": {
-                        "type": "langchain_ollama.OllamaEmbeddings",
-                        "kwargs": {
-                            "model":"${LLM_EMBEDDINGS_MODEL}",
-                            "base_url": "${LLM_INFERENCE}"
-                        }
-                    },
-                    "client": {
-                        "mode": "embedded",
-                        "options": {
-                            "port": 8077,
-                            "persistence_data_path": "/opt/db/weaviate",
-                            "version": "latest"
-                        }
-                    },
-                    "index_name": "customers"
+                    "model": "llama3",
+                    "base_url": "http://127.0.0.1:11434"
                 }
-            }
-        },
-        {
-            "name": "rag_weaviate_local",
-            "actor": {
-                "type": "document.store.weaviate.WeaviateVS",
+            },
+            "client": {
+                "mode": "embedded",
+                "options": {
+                    "port": 8077,
+                    "persistence_data_path": "/opt/db/weaviate",
+                    "version": "latest"
+                }
+            },
+            "index_name": "customers"
+        }
+    }
+}
+```
+
+##### 6.2 Local mode (normally for development) - a local weaviate instance is running
+```json
+{
+    "name": "rag_weaviate_local",
+    "actor": {
+        "type": "document.store.weaviate.WeaviateVS",
+        "kwargs": {
+            "embeddings": {
+                "type": "langchain_ollama.OllamaEmbeddings",
                 "kwargs": {
-                    "embeddings": {
-                        "type": "langchain_ollama.OllamaEmbeddings",
-                        "kwargs": {
-                            "model":"${LLM_EMBEDDINGS_MODEL}",
-                            "base_url": "${LLM_INFERENCE}"
-                        }
-                    },
-                    "client": {
-                        "mode": "local",
-                        "options": {
-                            "host": "localhost",
-                            "port": 8080,
-                            "grpc_port": 50051
-                        }
-                    },
-                    "index_name": "customers"
+                    "model": "llama3",
+                    "base_url": "http://127.0.0.1:11434"
                 }
-            }
-        },
-        {
-            "name": "rag_weaviate_custom",
-            "actor": {
-                "type": "document.store.weaviate.WeaviateVS",
+            },
+            "client": {
+                "mode": "local",
+                "options": {
+                    "host": "localhost",
+                    "port": 8080,
+                    "grpc_port": 50051
+                }
+            },
+            "index_name": "customers"
+        }
+    }
+}
+```
+
+##### 6.3 Custom mode - a standalone weaviate server is running (remotely)
+```json
+{
+    "name": "rag_weaviate_custom",
+    "actor": {
+        "type": "document.store.weaviate.WeaviateVS",
+        "kwargs": {
+            "embeddings": {
+                "type": "langchain_ollama.OllamaEmbeddings",
                 "kwargs": {
-                    "embeddings": {
-                        "type": "langchain_ollama.OllamaEmbeddings",
-                        "kwargs": {
-                            "model":"${LLM_EMBEDDINGS_MODEL}",
-                            "base_url": "${LLM_INFERENCE}"
-                        }
-                    },
-                    "client": {
-                        "mode": "custom",
-                        "options": {
-                            "http_host": "localhost",
-                            "http_port": 8080,
-                            "http_secure": false,
-                            "grpc_host": "localhost",
-                            "grpc_port": 50051,
-                            "grpc_secure": false
-                        }
-                    },
-                    "index_name": "customers"
+                    "model":"llama3",
+                    "base_url": "http://127.0.0.1:11434"
                 }
-            }
-        },
-        {
-            "name": "rag_weaviate_cloud",
-            "actor": {
-                "type": "document.store.weaviate.WeaviateVS",
+            },
+            "client": {
+                "mode": "custom",
+                "options": {
+                    "http_host": "192.168.0.100",
+                    "http_port": 8080,
+                    "http_secure": false,
+                    "grpc_host": "192.168.0.100",
+                    "grpc_port": 50051,
+                    "grpc_secure": false
+                }
+            },
+            "index_name": "customers"
+        }
+    }
+}
+```
+
+##### 6.4 Cloud mode - weaviate service is running in cloud.
+```json
+{
+    "name": "rag_weaviate_cloud",
+    "actor": {
+        "type": "document.store.weaviate.WeaviateVS",
+        "kwargs": {
+            "embeddings": {
+                "type": "langchain_ollama.OllamaEmbeddings",
                 "kwargs": {
-                    "embeddings": {
-                        "type": "langchain_ollama.OllamaEmbeddings",
-                        "kwargs": {
-                            "model":"${LLM_EMBEDDINGS_MODEL}",
-                            "base_url": "${LLM_INFERENCE}"
-                        }
-                    },
-                    "client": {
-                        "mode": "cloud",
-                        "options": {
-                            "cluster_url": "weaviate_cloud_cluster_url",
-                            "auth_credentials": "weaviate_cloud_api_key"
-                        }
-                    },
-                    "index_name": "customers"
+                    "model":"llama3",
+                    "base_url": "http://127.0.0.1:11434"
                 }
-            }
-        },
-        {
-            "name": "rag_milvus_local",
-            "actor": {
-                "type": "document.store.milvus.MilvusVS",
+            },
+            "client": {
+                "mode": "cloud",
+                "options": {
+                    "cluster_url": "weaviate_cloud_cluster_url",
+                    "auth_credentials": "weaviate_cloud_api_key"
+                }
+            },
+            "index_name": "customers"
+        }
+    }
+},
+```
+
+#### 7. Milvus
+The following examples show how to use Milvus to store customer documents in local and server modes.
+
+##### 7.1 Local mode with data file in local storage.
+```json
+{
+    "name": "rag_milvus_local",
+    "actor": {
+        "type": "document.store.milvus.MilvusVS",
+        "kwargs": {
+            "embedding_function": {
+                "type": "langchain_ollama.OllamaEmbeddings",
                 "kwargs": {
-                    "embedding_function": {
-                        "type": "langchain_ollama.OllamaEmbeddings",
-                        "kwargs": {
-                            "model":"${LLM_EMBEDDINGS_MODEL}",
-                            "base_url": "${LLM_INFERENCE}"
-                        }
-                    },
-                    "connection_args": {
-                        "uri": "/opt/db/milvus/customers.db"
-                    },
-                    "collection_name": "customers",
-                    "index_params": {
-                        "index_type": "FLAT", 
-                        "metric_type": "L2"
-                    },
-                    "auto_id": true
+                    "model": "llama3",
+                    "base_url": "http://127.0.0.1:11434"
                 }
-            }
-        },  
-        {
-            "name": "rag_milvus_server",
-            "actor": {
-                "type": "document.store.milvus.MilvusVS",
+            },
+            "connection_args": {
+                "uri": "/opt/db/milvus/customers.db"
+            },
+            "collection_name": "customers",
+            "index_params": {
+                "index_type": "FLAT", 
+                "metric_type": "L2"
+            },
+            "auto_id": true
+        }
+    }
+}
+```
+
+##### 7.2 Server mode
+```json
+{
+    "name": "rag_milvus_server",
+    "actor": {
+        "type": "document.store.milvus.MilvusVS",
+        "kwargs": {
+            "embedding_function": {
+                "type": "langchain_ollama.OllamaEmbeddings",
                 "kwargs": {
-                    "embedding_function": {
-                        "type": "langchain_ollama.OllamaEmbeddings",
-                        "kwargs": {
-                            "model":"${LLM_EMBEDDINGS_MODEL}",
-                            "base_url": "${LLM_INFERENCE}"
-                        }
-                    },
-                    "connection_args": {
-                        "uri": "http://127.0.0.1:19530",
-                        "user": "langchain",
-                        "password": "langchain",
-                        "db_name": "marketing"
-                    },
-                    "collection_name": "customers",
-                    "index_params": {
-                        "index_type": "FLAT", 
-                        "metric_type": "L2"
-                    },
-                    "consistency_level": "Strong",
-                    "drop_old": false,
-                    "auto_id": true
+                    "model": "llama3",
+                    "base_url": "http://127.0.0.1:11434"
                 }
-            }
-        },
-        {
-            "name": "rag_pipecone",
-            "actor": {
-                "type": "document.store.pipecone.PipeconeVS",
+            },
+            "connection_args": {
+                "uri": "http://192.168.0.100:19530",
+                "user": "langchain",
+                "password": "langchain",
+                "db_name": "marketing"
+            },
+            "collection_name": "customers",
+            "index_params": {
+                "index_type": "FLAT", 
+                "metric_type": "L2"
+            },
+            "consistency_level": "Strong",
+            "drop_old": false,
+            "auto_id": true
+        }
+    }
+}
+```
+
+#### 8. Pipecone
+The following example shows how to use pipecore to store customer documents in pipecone cloud environment.
+```json
+{
+    "name": "rag_pipecone",
+    "actor": {
+        "type": "document.store.pipecone.PipeconeVS",
+        "kwargs": {
+            "embedding": {
+                "type": "langchain_ollama.OllamaEmbeddings",
                 "kwargs": {
-                    "embedding": {
-                        "type": "langchain_ollama.OllamaEmbeddings",
-                        "kwargs": {
-                            "model":"${LLM_EMBEDDINGS_MODEL}",
-                            "base_url": "${LLM_INFERENCE}"
-                        }
-                    },
-                    "api_key": "pctest",
-                    "index_name": "customers",
-                    "options": {
-                        "vector_type": "dense", 
-                        "metric": "cosine",
-                        "spec": {
-                            "cloud": "aws",
-                            "region": "us-east-1"
-                        },
-                        "deletion_protection": "disabled"
-                    }
+                    "model": "llama3",
+                    "base_url": "http://127.0.0.1:11434"
                 }
+            },
+            "api_key": "pctest",
+            "index_name": "customers",
+            "options": {
+                "vector_type": "dense", 
+                "metric": "cosine",
+                "spec": {
+                    "cloud": "aws",
+                    "region": "us-east-1"
+                },
+                "deletion_protection": "disabled"
             }
-        }   
+        }
+    }
+}   
 ```
