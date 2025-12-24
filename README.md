@@ -172,7 +172,7 @@ In a RAG system, documents are indexed first before they can be used as context 
 
 The indexing process contains 3 steps - loading, splitting and indexing.
 #### 3.1 Loading
-The loading processs is to load documents from varous source locations. Upon for the formats of source documents, different act loader can be used. For details of various langchain document loaders, please check [here](https://docs.langchain.com/oss/javascript/integrations/providers/all_providers#document-loaders).
+The loading step is to load documents from varous source locations. Upon for the formats of source documents, different act loader can be used. For details of various langchain document loaders, please check [here](https://docs.langchain.com/oss/javascript/integrations/providers/all_providers#document-loaders).
 
 - For initial indexing, no schedulers should be configured. The indexing process stops after all documents have been indexed.
 - For ongoing incremental indexing, scheduler can be configured for each act loader or at loading level for all act loaders. Schedulers for specific act loaders take higher priority.
@@ -181,15 +181,16 @@ Two type of schedulers are supported - cron based time scheduler and file arriva
 
 #### 3.2 Splitting
 
-Once a document is loaded into memory, it goes into the splitting process which breaks the document into chunks. This is done through the configured splitter. Please check [here](https://docs.langchain.com/oss/javascript/integrations/splitters) for details of all langchain text-splitters.
+Once a document is loaded into memory, it goes into the splitting step which breaks the document into chunks. This is done through the configured splitter. Please check [here](https://docs.langchain.com/oss/javascript/integrations/splitters) for details of all langchain text-splitters.
 
-Use the concurrency configuration to spin up additional splitters to relieve back-pressure from the document loading process.
+Use the concurrency configuration to spin up additional splitters to relieve back-pressure from the document loading step.
 
 #### 3.3 Indexing
-In the indexing process, splitted documents are vectorized by the embedding model configured in the context-store referenced by the document_store element. The resulting vectors are then persisted into the target vectore store.
+In the indexing step, splitted documents are vectorized by the embedding model configured in the context-store referenced by the document_store element. The resulting vectors are then persisted into the target vectore store.
 
-Same as splitting process, use the concurrency configuration to spin up additional vectorizers to relieve back pressure from the document splitting process.
+Same as splitting step, use the concurrency configuration to spin up additional vectorizers to relieve back pressure from the document splitting step.
 
 ### 4. Setup a RAG-Chat Application
+
 #### 4.x Enable Agentic Capabilities for the RAG-Chat App
 ### 6. Run as Services
