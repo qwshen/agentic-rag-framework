@@ -65,21 +65,26 @@ The following vector stores and databases are supported for storing indexed docu
 For example, the following configuration can be used to set up PgVector:
 ```json
 {
-    "name": "vs_pg_vector_customers",
-    "actor": {
-        "type": "document.store.pgvector.PgVectorVS",
-        "kwargs": {
-            "embeddings": {
-                "type": "langchain_ollama.OllamaEmbeddings",
+    "context_stores": [
+        {
+            "name": "vs_pg_vector_customers",
+            "actor": {
+                "type": "document.store.pgvector.PgVectorVS",
                 "kwargs": {
-                    "model":"${LLM_EMBEDDINGS_MODEL}",
-                    "base_url": "${LLM_INFERENCE}"
+                    "embeddings": {
+                        "type": "langchain_ollama.OllamaEmbeddings",
+                        "kwargs": {
+                            "model":"${LLM_EMBEDDINGS_MODEL}",
+                            "base_url": "${LLM_INFERENCE}"
+                        }
+                    },
+                    "connection": "postgresql+psycopg://langchain:langchain@localhost:6024/langchain",
+                    "collection_name": "customers"
                 }
-            },
-            "connection": "postgresql+psycopg://langchain:langchain@localhost:6024/langchain",
-            "collection_name": "customers"
-        }
-    }
+            }
+        },
+        ...
+    ]
 }
 ```
 For instructions on configuring all other vector stores and databases, see [Set up Context Stores](./docs/setup-context-stores.md)
@@ -89,7 +94,7 @@ In a RAG system, documents are indexed first before they can be used as context 
 
 ```json
 {
-    "context_stores": [ ... ]
+    "context_stores": [ ... ],
     "indexing_def": [
         {
             "name": "sales_indexing",
@@ -170,7 +175,8 @@ In a RAG system, documents are indexed first before they can be used as context 
 }
 ```
 
-The indexing process contains 3 steps - loading, splitting and indexing.
+In the configuration, an indexing process consists of three steps: loading, splitting, and indexing. Multiple indexing processes can be defined, each handling different document formats from different sources and persisting the results to separate vector stores.
+
 #### 3.1 Loading
 The loading step is to load documents from varous source locations. Upon for the formats of source documents, different act loader can be used. For details of various langchain document loaders, please check [here](https://docs.langchain.com/oss/javascript/integrations/providers/all_providers#document-loaders).
 
@@ -191,6 +197,138 @@ In the indexing step, splitted documents are vectorized by the embedding model c
 Same as splitting step, use the concurrency configuration to spin up additional vectorizers to relieve back pressure from the document splitting step.
 
 ### 4. Setup a RAG-Chat Application
+A simple RAG application can be defined with the following configuration:
+```json
+"service_def": {
+    "context_stores": [ ... ],
+    "prompts": [
+        {
+            "name": "chat_prompt",
+            "actor": {
+                "type": "common.prompt.load_from_file",
+                "kwargs": {
+                    "path": "${CHAT_PROMPT_FILE}"
+                }
+            }                
+        }
+    ],
+    "chat_models": [
+        {
+            "name": "mistral:7b",
+            "actor": {
+                "type": "langchain_ollama.ChatOllama",
+                "kwargs": {
+                    "base_url": "${LLM_INFERENCE}",
+                    "model": "mistral:7b",
+                    "temperature": 0.0
+                }
+            }
+        }
+    ],
+    "retrievals": [
+        {
+            "name": "r_customers",
+            "description": "Customer support documents",
+            "search": {
+                "type": "similarity",
+                "kwargs": {
+                    "k": 6,
+                    "fetch_k": 16,
+                    "score_threshold": 0.8,
+                    "filter": {
+                        "paper_title": "GPT-4 Technical Report"
+                    },
+                    "lambda_mult": 0.3
+                },
+                "document_store": "vs_pg_vector_customers"
+            }
+        }
+    ],
+    "services": [
+        {
+            "name": "customer_support_chat",
+            "definition": {
+                "prompt": {
+                    "ref": "chat_prompt"
+                },
+                "context": {
+                    "ref_retrievals": ["r_customers"]
+                },
+                "generation": {
+                    "ref_model": "deepseek-r1:1.5b"
+                }
+            }
+        }
+    ]
+}
+```
+At a minimum, a RAG application requires a prompt, a context store, and an LLM. A user question is incorporated into the prompt, which is then augmented with documents retrieved from the context store. Using this contextual knowledge, the LLM generates a response to the user’s question.
 
-#### 4.x Enable Agentic Capabilities for the RAG-Chat App
-### 6. Run as Services
+#### 4.1 Inject user's chat history
+Please use the following configuration to inject a user’s chat history, allowing the LLM to understand the conversational context.
+```json
+"prompt": {
+    "ref": "chat_prompt",
+    "with_history": {
+        "use_summary": false,
+        "window_k": 5
+    }
+}
+```
+- user_summary: When set to true, a summary of the user’s chat history is generated and used; otherwise, the raw messages are used.
+- window_k: the number of messages.
+
+#### 4.2 Enable retrieval agent
+When there are more than one retrievals being used, the model for creating an retrieval agent is required. The following shows one example:
+```json
+"context": {
+    "ref_retrievals": ["r_customers", "r_sales"],
+    "agent": {
+        "ref_model": "gpt-oss:20b"
+    }
+}
+```
+Note: if there is only one retrieval even with agent configured, retrieval agent won't be created. The retrieval is used directly.
+
+#### 4.3 Enable Agentic Capabilities
+Agentic capabilities refer to the system’s ability to act autonomously or semi-autonomously to achieve specific tasks, rather than just passively responding to user queries. This can be achieved by adding the following configuration in the difinition of a service:
+```json
+"generation": {
+    "ref_model": "deepseek-r1:1.5b",
+    "answer_rewriting": {
+        "ref_prompt": "answer_rewriting_prompt",
+        "ref_model": "llama3.2"
+    }
+},
+"agentivity": {
+    "query_refinement": {
+        "ref_prompt": "query_refinement_prompt",
+        "ref_model": "llama3.2"
+    },
+    "document_grading": {
+        "ref_prompt": "document_grading_prompt",
+        "ref_model": "deepseek-r1:1.5b",
+        "accept_gradedness_answers": ["relevant", "yes"],
+        "min_threshold_score": 0.6,
+        "max_iterations": 2
+    },
+    "answer_grounding": {
+        "ref_prompt": "answer_grounding_prompt",
+        "ref_model": "deepseek-r1:1.5b",
+        "accept_groundedness_answers": ["yes"],
+        "max_iterations": 3
+    }
+}
+```
+This requires multiple additional prompts containing clear, specific instructions, allowing the LLM to generate responses as intended that serve as the outputs of re-thinking or reasoning.
+
+##### 4.3.1 Prompt rewriting - the user query is often reformulated or augmented
+
+##### 4.3.2 Document grading - retrieved documents are evaluated for relevance, quality, and reliability before being used as context
+
+##### 4.3.3 Answer grounding: LLM responses are checked against the retrieved documents to prevent hallucinations and enhance factual correctness
+
+##### 4.3.4 Answer rewriting/polishing: the initial LLM output is refined for clarity, coherence, formatting, or tone before being returned to the user.
+
+
+### 5. Run as Services
