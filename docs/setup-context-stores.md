@@ -15,7 +15,7 @@ The following example shows how to use FAISS to persist sales documnets. The sto
             "embeddings": {
                 "type": "langchain_ollama.OllamaEmbeddings",
                 "kwargs": {
-                    "model":"llama3",
+                    "model": "llama3",
                     "base_url": "http://127.0.0.1:11434"
                 }
             },
@@ -41,7 +41,7 @@ The following example shows how to use Chroma to persist marketing documnets. Th
             "embeddings": {
                 "type": "langchain_ollama.OllamaEmbeddings",
                 "kwargs": {
-                    "model":"ollama3",
+                    "model": "ollama3",
                     "base_url": "http://127.0.0.1:11434"
                 }
             },
@@ -69,7 +69,7 @@ This following example shows how to use PgVector to persist human resources docu
             "embeddings": {
                 "type": "langchain_ollama.OllamaEmbeddings",
                 "kwargs": {
-                    "model":"ollama3",
+                    "model": "ollama3",
                     "base_url": "http://127.0.0.1:11434"
                 }
             },
@@ -100,7 +100,7 @@ The following example shows how to use OpenSearch to persist customer documents.
             "embedding_function": {
                 "type": "langchain_ollama.OllamaEmbeddings",
                 "kwargs": {
-                    "model":"ollama3",
+                    "model": "ollama3",
                     "base_url": "http://127.0.0.1:11434"
                 }
             },
@@ -161,11 +161,9 @@ The following example shows how to use Qdrant to persist customer documents. The
 
 #### 6. Weaviate
 
-The following examples show how to use Weaviate to psersist customer documents in different deployment modes. 
-
+The following examples show how to use Weaviate to psersist customer documents in different deployment modes. Embeddings are generated using the Llama 3 model served by Ollama at http://127.0.0.1:11434.
 
 ##### 6.1 Embedded mode with data file being located at /opt/db/weaviate/customers.
-
 ```json
 {
     "name": "rag_weaviate_embedded",
@@ -231,7 +229,7 @@ The following examples show how to use Weaviate to psersist customer documents i
             "embeddings": {
                 "type": "langchain_ollama.OllamaEmbeddings",
                 "kwargs": {
-                    "model":"llama3",
+                    "model": "llama3",
                     "base_url": "http://127.0.0.1:11434"
                 }
             },
@@ -262,7 +260,7 @@ The following examples show how to use Weaviate to psersist customer documents i
             "embeddings": {
                 "type": "langchain_ollama.OllamaEmbeddings",
                 "kwargs": {
-                    "model":"llama3",
+                    "model": "llama3",
                     "base_url": "http://127.0.0.1:11434"
                 }
             },
@@ -280,7 +278,7 @@ The following examples show how to use Weaviate to psersist customer documents i
 ```
 
 #### 7. Milvus
-The following examples show how to use Milvus to store customer documents in local and server modes.
+The following examples show how to use Milvus to store customer documents in local and server modes. Embeddings are generated using the Llama 3 model served by Ollama at http://127.0.0.1:11434.
 
 ##### 7.1 Local mode with data file in local storage.
 ```json
@@ -344,7 +342,7 @@ The following examples show how to use Milvus to store customer documents in loc
 ```
 
 #### 8. Pipecone
-The following example shows how to use pipecore to store customer documents in pipecone cloud environment.
+The following example shows how to use pipecore to store customer documents in pipecone cloud environment. Embeddings are generated using the Llama 3 model served by Ollama at http://127.0.0.1:11434.
 ```json
 {
     "name": "rag_pipecone",
