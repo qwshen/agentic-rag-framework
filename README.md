@@ -290,7 +290,7 @@ When there are more than one retrievals being used, the model for creating an re
 ```
 Note: if there is only one retrieval even with agent configured, retrieval agent won't be created. The retrieval is used directly.
 
-#### 4.3 Enable Agentic Capabilities
+#### 4.3 Enable agentic capabilities
 Agentic capabilities refer to the system’s ability to act autonomously or semi-autonomously to achieve specific tasks, rather than just passively responding to user queries. This can be achieved by adding the following configuration in the difinition of a service:
 ```json
 "generation": {
@@ -320,11 +320,62 @@ Agentic capabilities refer to the system’s ability to act autonomously or semi
     }
 }
 ```
-This requires multiple additional prompts containing clear, specific instructions, allowing the LLM to generate responses as intended that serve as the outputs of re-thinking or reasoning.
+This requires several additional prompts containing clear, specific instructions, allowing the LLM to generate responses as intended that serve as the outputs of re-thinking or reasoning.
 
-##### 4.3.1 Prompt rewriting - the user query is often reformulated or augmented
+##### 4.3.1 Document grading - retrieved documents are evaluated for relevance, quality, and reliability before being used as context
+```json
+"document_grading": {
+    "ref_prompt": "document_grading_prompt",
+    "ref_model": "deepseek-r1:1.5b",
+    "accept_gradedness_answers": ["relevant", "yes"],
+    "min_threshold_score": 0.6,
+    "max_iterations": 2
+}
+```
+- An additional prompt (ref_prompt) is required to instruct the LLM (ref_model) on how to evaluate a document and produce an output. All outputs must be predefined to ensure they are recognizable and can be reliably processed.
 
-##### 4.3.2 Document grading - retrieved documents are evaluated for relevance, quality, and reliability before being used as context
+  The following is one example of prompt for document grading. It instructs the LLM to output either "relevant" or "irrelevant".
+  ```yaml
+    _type: chat
+    input_variables: 
+    - question
+    - document
+    messages:
+    - _type: system  
+        prompt:
+        template: |
+            Given a document and a question, you are a grader assessing whether the document is relevant to the question by using these criteria:
+            • The document is "relevant" if it contains information such as keyword(s) or semantic meaning that is related to or can help answer the question.
+            • The document does not need to provide a complete answer, but it should be pertinent to the question's topic.
+            • Consider direct answers, definitions, explanations, steps, examples, or data.
+            • Do NOT judge writing quality or formatting.
+            • Do NOT guess missing information.
+            • If relevance is unclear or only slightly related, mark it as "irrelevant".
+            • Do NOT answer the query. Only judge relevance.
+
+            You must return one of two answers only: "relevant" or "irrelevant".
+            • "relevant" means the document is relevant to the question.
+            • "irrelevant" means the document is not relevant.
+        role: system
+    - _type: human
+        prompt:
+        input_variables:
+            - question
+            - document
+
+        template: |
+            Question: {question}
+            Document: {document}
+        role: user
+  ```
+
+- accept_gradness_answers defines the set of acceptable answers for matching the evaluation output when the document is relevant.
+- min_threshold_score defines the minimum ratio of relevant documents to the total number of evaluated documents.
+- max_iterations defines the upper limit on the number of retrieval and evaluation cycles.
+
+Note: document grading depends on prompt rewriting being enabled. If an insufficient number of relevant documents is identified, prompt rewriting is invoked for the subsequent retrieval iteration.
+
+##### 4.3.2 Prompt rewriting - the user query is often reformulated or augmented
 
 ##### 4.3.3 Answer grounding: LLM responses are checked against the retrieved documents to prevent hallucinations and enhance factual correctness
 
