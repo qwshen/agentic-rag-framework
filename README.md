@@ -405,7 +405,7 @@ The prompt (ref_prompt) instructs the LLM (ref_model) to rewrite the current que
           You MUST respond with only the improved question as plain text. DO NOT add anything else.
       role: system
     - _type: human
-        prompt:
+      prompt:
         input_variables:
           - chat_history
           - question
