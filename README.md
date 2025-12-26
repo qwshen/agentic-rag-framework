@@ -358,7 +358,7 @@ This requires several additional prompts containing clear, specific instructions
             • "irrelevant" means the document is not relevant.
       role: system
     - _type: human
-        prompt:
+      prompt:
         input_variables:
           - question
           - document
