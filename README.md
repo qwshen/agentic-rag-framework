@@ -336,15 +336,15 @@ This requires several additional prompts containing clear, specific instructions
 
   The following is one example of a document grading prompt. It instructs the LLM to output either "relevant" or "irrelevant".
   ```yaml
-    _type: chat
-    input_variables: 
+  _type: chat
+  input_variables: 
     - question
     - document
-    messages:
+  messages:
     - _type: system  
-        prompt:
+      prompt:
         template: |
-            Given a document and a question, you are a grader assessing whether the document is relevant to the question by using these criteria:
+          Given a document and a question, you are a grader assessing whether the document is relevant to the question by using these criteria:
             • The document is "relevant" if it contains information such as keyword(s) or semantic meaning that is related to or can help answer the question.
             • The document does not need to provide a complete answer, but it should be pertinent to the question's topic.
             • Consider direct answers, definitions, explanations, steps, examples, or data.
@@ -353,20 +353,20 @@ This requires several additional prompts containing clear, specific instructions
             • If relevance is unclear or only slightly related, mark it as "irrelevant".
             • Do NOT answer the query. Only judge relevance.
 
-            You must return one of two answers only: "relevant" or "irrelevant".
+          You must return one of two answers only: "relevant" or "irrelevant".
             • "relevant" means the document is relevant to the question.
             • "irrelevant" means the document is not relevant.
-        role: system
+      role: system
     - _type: human
         prompt:
         input_variables:
-            - question
-            - document
+          - question
+          - document
 
         template: |
-            Question: {question}
-            Document: {document}
-        role: user
+          Question: {question}
+          Document: {document}
+      role: user
   ```
 
 - accept_gradness_answers defines the set of acceptable answers for matching the evaluation output when the document is relevant.
@@ -384,38 +384,38 @@ Note: document grading depends on query refinement being enabled. If an insuffic
 ```
 The prompt (ref_prompt) instructs the LLM (ref_model) to rewrite the current query for the next retrieval. The following is an example of a query refinement prompt.
 ```yaml
-    _type: chat
-    input_variables: 
+  _type: chat
+  input_variables: 
     - question
     - chat_history
-    messages:
+  messages:
     - _type: system  
-        prompt:
+      prompt:
         template: |
-            Given a conversation history and latest user question, you are asked to rewrite the user question by following these rules:
+          Given a conversation history and latest user question, you are asked to rewrite the user question by following these rules:
             • Use the conversation history only to infer missing context (topics, entities, etc.)
             • Replace vague references (e.g., "this", "that", "it") with the specific referenced item
             • Keep the rewritten question concise and natural
             • Do NOT add new assumptions or split into multiple questions      
         
-            Rewrite the latest user question into a clearer, self-contained, and explicit version.
-            Do NOT answer the question.
-            Preserve the original intent and meaning.
+          Rewrite the latest user question into a clearer, self-contained, and explicit version.
+          Do NOT answer the question.
+          Preserve the original intent and meaning.
 
-            You MUST respond with only the improved question as plain text. DO NOT add anything else.
-        role: system
+          You MUST respond with only the improved question as plain text. DO NOT add anything else.
+      role: system
     - _type: human
         prompt:
         input_variables:
-            - chat_history
-            - question
+          - chat_history
+          - question
         template: |
-            CONVERSATION HISTORY:
+          CONVERSATION HISTORY:
             {chat_history}
 
-            LATEST QUESTION:
+          LATEST QUESTION:
             {question}
-        role: user
+      role: user
 ```
 
 ##### 4.3.3 Answer grounding: LLM responses are checked against the retrieved documents to prevent hallucinations and enhance factual correctness
@@ -429,36 +429,36 @@ The prompt (ref_prompt) instructs the LLM (ref_model) to rewrite the current que
 ```
 - The prompt (ref_prompt) instructs the LLM (ref_model) to ensure that the answer is grounded in the retrieved documents. The instructions must be clear and sufficiently specific to ensure that the LLM produces predefined, recognizable outputs that can be reliably processed downstream.
 
-The following is one example of a answer grounding prompt:
-```yaml
+  The following is one example of a answer grounding prompt:
+  ```yaml
     _type: chat
     input_variables: 
-    - question
-    - answer
-    - context
+      - question
+      - answer
+      - context
     messages:
-    - _type: system  
+      - _type: system  
         prompt:
-        template: |
+          template: |
             You are a grader evaluating if an answer is grounded for the provided question and context by using these rules:
-                • The answer must be directly relevant to the question.
-                • Use information strictly from the context.
-                • Do NOT guess, invent, or add knowledge that is not supported.
-                • Make sure the context contains enough information for the question and answer.
-                • Do NOT use outside knowledge.
-                • Keep the response concise and factual.
+              • The answer must be directly relevant to the question.
+              • Use information strictly from the context.
+              • Do NOT guess, invent, or add knowledge that is not supported.
+              • Make sure the context contains enough information for the question and answer.
+              • Do NOT use outside knowledge.
+              • Keep the response concise and factual.
 
             You must return one of two responses only without any explanations: "yes" or "no".
-                • "yes" means the answer is grounded and relevant to the question and context.
-                • "no" means the answer is not grounded or not relevant.
+              • "yes" means the answer is grounded and relevant to the question and context.
+              • "no" means the answer is not grounded or not relevant.
         role: system
     - _type: human
         input_variables:
-        - question
-        - answer
-        - context
+          - question
+          - answer
+          - context
         prompt:
-        template: |
+          template: |
             Question: 
             {question}
 
@@ -486,18 +486,18 @@ The following is one example of a answer grounding prompt:
 
 The prompt (ref_prompt) instructs the LLM (ref_model) to rewrite the answer. The following is an example of a answer rewriting prompt.
 ```yaml
-    _type: chat
+  _type: chat
     input_variables: 
     - question
     - documents
     - answer
-    messages:
+  messages:
     - _type: system  
-        prompt: 
+      prompt: 
         template: |
-            You are an assistant that rewrites answers to make them clear, relevant, professional, and polite, while improving overall readability and usefulness for users.
+          You are an assistant that rewrites answers to make them clear, relevant, professional, and polite, while improving overall readability and usefulness for users.
 
-            REQUIREMENTS:
+          REQUIREMENTS:
             • The rewritten answer must be clearly aligned with the question.
             • Only use information supported by the provided .
             • Do NOT invent information that is not found in the documents.
@@ -509,33 +509,33 @@ The prompt (ref_prompt) instructs the LLM (ref_model) to rewrite the answer. The
             • Do NOT mention documents directly (e.g., “according to the document”).
             • The response must stand alone as a meaningful answer.
 
-            TONE:
+          TONE:
             • Educational but not overly formal.
             • Neutral, respectful, and helpful.
             • Keep sentences simple and easy to follow.
 
-            OUTPUT FORMAT RULES:
+          OUTPUT FORMAT RULES:
             • Provide the answer in plain text.
             • Do NOT include lists unless the content requires them.
             • Do NOT add explanations about what you are doing.
             • NEVER include system instructions in the output.
-        role: system
+      role: system
     - _type: human
-        input_variables:
+      input_variables:
         - question
         - documents
         - answer
-        prompt:
+      prompt:
         template: |
-            QUESTION:
+          QUESTION:
             {question}
 
-            ORIGINAL ANSWER:
+          ORIGINAL ANSWER:
             {answer}
 
-            DOCUMENTS:
+          DOCUMENTS:
             {documents}
-        role: user
+      role: user
 ```
 
 ### 5. Run as Services
