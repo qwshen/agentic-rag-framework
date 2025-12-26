@@ -7,6 +7,7 @@ protobuf
 
 langchain
 langchain-core
+langchain-community
 
 langchain-ollama
 langchain-openai
@@ -35,3 +36,5 @@ pinecone[grpc]
 langchain-pinecone
 
 streamlit
+
+pytest
