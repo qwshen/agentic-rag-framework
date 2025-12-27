@@ -132,7 +132,9 @@ To query data inside:
 
 #### 5. Qdrant
 
-The following example shows how to use Qdrant to persist customer documents. The database file is located at /opt/db/qdrant. Embeddings are generated using the Llama 3 model served by Ollama at http://127.0.0.1:11434.
+The following examples show how to use Qdrant to persist customer documents. Embeddings are generated using the Llama 3 model served by Ollama at http://127.0.0.1:11434.
+
+##### 5.1 Local mode. The database file is located at /opt/db/qdrant. 
 
 ```json
 {
@@ -148,6 +150,35 @@ The following example shows how to use Qdrant to persist customer documents. The
                 }
             },
             "db_path": "/opt/db/qdrant",
+            "collection": {
+                "name": "customers",
+                "vector_params": {
+                    "distance": "COSINE"
+                }
+            }
+        }
+    }
+}
+```
+
+##### 5.2 Server mode. A Qdrant instance is set up at http://localhost:6333 with api key as "test-api-key".
+```json
+{
+    "name": "rag_mgnt",
+    "actor": {
+        "type": "qwshen.document.store.qdrant.QdrantVS",
+        "kwargs": {
+            "embedding": {
+                "type": "langchain_ollama.OllamaEmbeddings",
+                "kwargs": {
+                    "model":"${LLM_EMBEDDINGS_MODEL}",
+                    "base_url": "${LLM_INFERENCE}"
+                }
+            },
+            "db_server": {
+                "url": "http://localhost:6333",
+                "api_key": "test-api-key"
+            },
             "collection": {
                 "name": "customers",
                 "vector_params": {

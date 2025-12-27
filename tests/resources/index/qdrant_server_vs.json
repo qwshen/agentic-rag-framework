@@ -1,0 +1,76 @@
+{
+    "context_stores": [
+        {
+            "name": "rag_mgnt",
+            "actor": {
+                "type": "qwshen.document.store.qdrant.QdrantVS",
+                "kwargs": {
+                    "embedding": {
+                        "type": "langchain_ollama.OllamaEmbeddings",
+                        "kwargs": {
+                            "model":"${LLM_EMBEDDINGS_MODEL}",
+                            "base_url": "${LLM_INFERENCE}"
+                        }
+                    },
+                    "db_server": {
+                        "url": "http://localhost:6333",
+                        "api_key": "test-api-key"
+                    },
+                    "collection": {
+                        "name": "products",
+                        "vector_params": {
+                            "distance": "COSINE"
+                        }
+                    }
+                }
+            }
+        }
+    ],
+    "indexing_def": [
+        {
+            "name": "mgnt_indexing",
+            "loading": {
+                "actors": [
+                    {
+                        "actor": {
+                            "type": "qwshen.document.loading.file.FileLoader",
+                            "kwargs": {
+                                "directory": "${DOCUMENTS_DIRECTORY}/pdf",
+                                "file_extensions": ".pdf",
+                                "worker": {
+                                    "type": "langchain_community.document_loaders.pdf.PyPDFLoader",
+                                    "kwargs": {
+                                        "extract_images": false
+                                    }
+                                }
+                            }
+                        }
+                    }
+                ]
+            },
+            "splitting": {
+                "actor":{
+                    "type": "qwshen.document.splitting.text.TextSplitter",
+                    "kwargs": {
+                        "worker": {
+                            "type": "langchain_text_splitters.character.RecursiveCharacterTextSplitter",
+                            "kwargs": { 
+                                "chunk_size": 1600,
+                                "chunk_overlap": 640
+                            }
+                        }
+                    }
+                },
+                "concurrency": {
+                    "workers": 2
+                }
+            },
+            "indexing": {
+                "concurrency": {
+                    "workers": 1
+                },
+                "document_store": "rag_mgnt"
+            }
+        }
+    ]    
+}
