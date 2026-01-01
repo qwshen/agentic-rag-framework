@@ -9,8 +9,6 @@ from typing import Callable
 from types import NoneType
 
 from langchain_core.documents.base import Document
-from langchain_core.vectorstores.base import VectorStore
-
 from .utils import nvl
 
 class Creator:
@@ -119,6 +117,13 @@ class DocumentStore(Creator):
     def embedding_function(self):
         return self._embedding_function
     
+    def add_documents(self, documents: list[Document]) -> list[str]:
+        self.verify()
+        return self._interface.add_documents(documents)
+    
+    def close(self):
+        pass
+
     @staticmethod
     def create_embeddings(embeddings: dict):
         embedding_type = embeddings.get("type", None)
@@ -142,8 +147,7 @@ class DocumentIndexer(Creator, DocumentStorable):
         return self.add_documents([ document ])
 
     def add_documents(self, documents: list[Document]) -> list[str]:      
-        self._store.verify()
-        return self._store.interface().add_documents([DocumentIndexer._remove_nul_bytes(document) for document in documents if len(document.page_content.strip()) > 0])
+        return self._store.add_documents([DocumentIndexer._remove_nul_bytes(document) for document in documents if len(document.page_content.strip()) > 0])
 
     def get_document(self, id: str) -> Document | None:
         documents = self.get_documents([id])
