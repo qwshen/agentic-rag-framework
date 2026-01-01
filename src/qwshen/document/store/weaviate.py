@@ -1,6 +1,7 @@
 from urllib import response
 from annotated_types import doc
 import weaviate
+from weaviate.auth import AuthApiKey
 from langchain_weaviate.vectorstores import WeaviateVectorStore
 from langchain_core.documents.base import Document
 
@@ -43,7 +44,7 @@ class WeaviateVS(DocumentStore):
 
     def _create_client(self, config: dict):
         mode = config.get("mode", "embedded")
-        options = config.get("options", {})
+        options = {k: AuthApiKey(v) if k == "auth_credentials" else v for k, v in config.get("options", {}).items()}
         if mode == "embedded":
             return weaviate.connect_to_embedded(**options)
         elif mode == "local":
