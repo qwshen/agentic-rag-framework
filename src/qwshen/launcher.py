@@ -1,5 +1,7 @@
 import argparse
+import time
 from threading import Thread
+from functools import reduce
 
 from qwshen.common.component import Runner
 from qwshen.definition.parse import Parser
@@ -12,6 +14,7 @@ class Launcher:
         def_file, env_file = Launcher.__initialize_args()
         index_def, service_def = Parser(env_file=env_file).parse(def_file=def_file)
 
+        indexers = []
         if index_def is not None:
             indexers = DocumentOperator.setup(index_def)
             if len(indexers) > 0:
@@ -27,7 +30,7 @@ class Launcher:
         services = ServiceOperator.setup(service_def) if service_def is not None else []
         for service, _ in services:
             service.run()
-        return services
+        return indexers, services
     
     @staticmethod
     def __initialize_args():
@@ -41,15 +44,20 @@ class Launcher:
         return args.def_file, args.env_file
 
 
-def main():
-    services = Launcher.start()
+def index():
+    indexers, _ = Launcher.start()
+    if reduce(lambda x, y: x or y, [indexer.index_scheduled() for indexer in indexers], False):
+        try:
+            print("Indexing scheduled. Press Ctrl+C to exit.")
+            while True:
+                time.sleep(30)
+        except (KeyboardInterrupt, SystemExit):
+            pass
+
+def answer(question: str):
+    _, services = Launcher.start()
     for service, _ in services:
-        print(f"Service: {service.get_name()} is started.")
-        for messages in service.process("What is docker?", kwargs={"session_id": "test_session"}):
+        print(f"Service: {service.get_name()} is serving ...")
+        print(f"Question: {question}")
+        for messages in service.process(question, kwargs={"session_id": "test_session"}):
             print(messages)
-
-        for messages in service.process("How to set up a docker container?", kwargs={"session_id": "test_session"}):
-            print(messages)
-
-if __name__ == "__main__":
-    main()

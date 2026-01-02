@@ -15,6 +15,17 @@ There are two major phases in typical RAG pipelines - Document Indexing and Answ
 
 ![RAG Pipeline](./docs/images/rag-pipeline.png)
 
+### 0. Set up project
+- Install Python 3.10+ and set up a virutla environment
+- Install required packages
+  ```shell
+  pip install -r ./requirements.txt
+  ```
+- Set up the project
+  ```shell
+  pip install . -e
+  ```
+  
 For a concise walkthrough of the framework, please follow this [tutorial](./docs/tutorial.md).
 
 ### 1. Introduce RAG-Config Template
@@ -69,7 +80,7 @@ For example, the following configuration can be used to set up PgVector:
         {
             "name": "vs_pg_vector_customers",
             "actor": {
-                "type": "document.store.pgvector.PgVectorVS",
+                "type": "qwshen.document.store.pgvector.PgVectorVS",
                 "kwargs": {
                     "embeddings": {
                         "type": "langchain_ollama.OllamaEmbeddings",
@@ -102,7 +113,7 @@ In a RAG system, documents are indexed first before they can be used as context 
                 "actors": [
                     {
                         "actor": {
-                            "type": "document.loading.file.FileLoader",
+                            "type": "qwshen.document.loading.file.FileLoader",
                             "kwargs": {
                                 "directory": "${DOCUMENTS_DIRECTORY}/sales",
                                 "file_extensions": ".pdf",
@@ -115,7 +126,7 @@ In a RAG system, documents are indexed first before they can be used as context 
                             }
                         },
                         "scheduler": {
-                            "type": "common.scheduling.FileArrivalScheduler",
+                            "type": "qwshen.common.scheduling.FileArrivalScheduler",
                             "kwargs": {
                                 "directory": "${DOCUMENTS_DIRECTORY}/sales",
                                 "recursive": true
@@ -124,7 +135,7 @@ In a RAG system, documents are indexed first before they can be used as context 
                     },                    
                     {
                         "actor": {
-                            "type": "document.loading.file.FileLoader",
+                            "type": "qwshen.document.loading.file.FileLoader",
                             "kwargs": {
                                 "directory": "${DOCUMENTS_DIRECTORY}/sales",
                                 "recursive": false,
@@ -140,7 +151,7 @@ In a RAG system, documents are indexed first before they can be used as context 
                     }
                 ],
                 "scheduler": {
-                    "type": "common.scheduling.CronScheduler",
+                    "type": "qwshen.common.scheduling.CronScheduler",
                     "kwargs": {
                         "crons": ["35 09 * * *"]
                     }
@@ -148,7 +159,7 @@ In a RAG system, documents are indexed first before they can be used as context 
             },
             "splitting": {
                 "actor":{
-                    "type": "document.splitting.text.TextSplitter",
+                    "type": "qwshen.document.splitting.text.TextSplitter",
                     "kwargs": {
                         "worker": {
                             "type": "langchain_text_splitters.character.RecursiveCharacterTextSplitter",
@@ -205,7 +216,7 @@ A simple RAG application can be defined with the following configuration:
         {
             "name": "chat_prompt",
             "actor": {
-                "type": "common.prompt.load_from_file",
+                "type": "qwshen.common.prompt.load_from_file",
                 "kwargs": {
                     "path": "${CHAT_PROMPT_FILE}"
                 }

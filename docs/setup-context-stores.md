@@ -10,7 +10,7 @@ The following example shows how to use FAISS to persist sales documnets. The sto
 {
     "name": "sales_vs",
     "actor":{
-        "type": "document.store.faiss.FaissVS",
+        "type": "qwshen.document.store.faiss.FaissVS",
         "kwargs": {
             "embeddings": {
                 "type": "langchain_ollama.OllamaEmbeddings",
@@ -36,7 +36,7 @@ The following example shows how to use Chroma to persist marketing documnets. Th
 {
     "name": "marketing_vs",
     "actor": {
-        "type": "document.store.chroma.ChromaVS",
+        "type": "qwshen.document.store.chroma.ChromaVS",
         "kwargs": {
             "embeddings": {
                 "type": "langchain_ollama.OllamaEmbeddings",
@@ -64,7 +64,7 @@ This following example shows how to use PgVector to persist human resources docu
 {
     "name": "hr_vs",
     "actor": {
-        "type": "document.store.pgvector.PgVectorVS",
+        "type": "qwshen.document.store.pgvector.PgVectorVS",
         "kwargs": {
             "embeddings": {
                 "type": "langchain_ollama.OllamaEmbeddings",
@@ -95,7 +95,7 @@ The following example shows how to use OpenSearch to persist customer documents.
 {
     "name": "customer_vs",
     "actor": {
-        "type": "document.store.opensearch.OpenSearchVS",
+        "type": "qwshen.document.store.opensearch.OpenSearchVS",
         "kwargs": {
             "embedding_function": {
                 "type": "langchain_ollama.OllamaEmbeddings",
@@ -140,7 +140,7 @@ The following examples show how to use Qdrant to persist customer documents. Emb
 {
     "name": "rag_mgnt",
     "actor": {
-        "type": "document.store.qdrant.QdrantVS",
+        "type": "qwshen.document.store.qdrant.QdrantVS",
         "kwargs": {
             "embedding": {
                 "type": "langchain_ollama.OllamaEmbeddings",
@@ -199,7 +199,7 @@ The following examples show how to use Weaviate to psersist customer documents i
 {
     "name": "rag_weaviate_embedded",
     "actor": {
-        "type": "document.store.weaviate.WeaviateVS",
+        "type": "qwshen.document.store.weaviate.WeaviateVS",
         "kwargs": {
             "embeddings": {
                 "type": "langchain_ollama.OllamaEmbeddings",
@@ -227,7 +227,7 @@ The following examples show how to use Weaviate to psersist customer documents i
 {
     "name": "rag_weaviate_local",
     "actor": {
-        "type": "document.store.weaviate.WeaviateVS",
+        "type": "qwshen.document.store.weaviate.WeaviateVS",
         "kwargs": {
             "embeddings": {
                 "type": "langchain_ollama.OllamaEmbeddings",
@@ -255,7 +255,7 @@ The following examples show how to use Weaviate to psersist customer documents i
 {
     "name": "rag_weaviate_custom",
     "actor": {
-        "type": "document.store.weaviate.WeaviateVS",
+        "type": "qwshen.document.store.weaviate.WeaviateVS",
         "kwargs": {
             "embeddings": {
                 "type": "langchain_ollama.OllamaEmbeddings",
@@ -286,7 +286,7 @@ The following examples show how to use Weaviate to psersist customer documents i
 {
     "name": "rag_weaviate_cloud",
     "actor": {
-        "type": "document.store.weaviate.WeaviateVS",
+        "type": "qwshen.document.store.weaviate.WeaviateVS",
         "kwargs": {
             "embeddings": {
                 "type": "langchain_ollama.OllamaEmbeddings",
@@ -316,7 +316,7 @@ The following examples show how to use Milvus to store customer documents in loc
 {
     "name": "rag_milvus_local",
     "actor": {
-        "type": "document.store.milvus.MilvusVS",
+        "type": "qwshen.document.store.milvus.MilvusVS",
         "kwargs": {
             "embedding_function": {
                 "type": "langchain_ollama.OllamaEmbeddings",
@@ -344,7 +344,7 @@ The following examples show how to use Milvus to store customer documents in loc
 {
     "name": "rag_milvus_server",
     "actor": {
-        "type": "document.store.milvus.MilvusVS",
+        "type": "qwshen.document.store.milvus.MilvusVS",
         "kwargs": {
             "embedding_function": {
                 "type": "langchain_ollama.OllamaEmbeddings",
@@ -378,7 +378,7 @@ The following example shows how to use pipecore to store customer documents in p
 {
     "name": "rag_pipecone",
     "actor": {
-        "type": "document.store.pipecone.PipeconeVS",
+        "type": "qwshen.document.store.pipecone.PipeconeVS",
         "kwargs": {
             "embedding": {
                 "type": "langchain_ollama.OllamaEmbeddings",

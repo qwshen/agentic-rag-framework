@@ -1,0 +1,110 @@
+{
+    "context_stores": [
+        {
+            "name": "rag_marketing",
+            "actor": {
+                "type": "qwshen.document.store.chroma.ChromaVS",
+                "kwargs": {
+                    "embeddings": {
+                        "type": "langchain_ollama.OllamaEmbeddings",
+                        "kwargs": {
+                            "model":"${LLM_EMBEDDINGS_MODEL}",
+                            "base_url": "${LLM_INFERENCE}"
+                        }
+                    },
+                    "store_file": "/opt/agentic-rag-1.0.0/db/chroma/marketing"
+                }
+            }
+        }
+    ],
+    "indexing_def": [
+        {
+            "name": "marketing_indexing",
+            "loading": {
+                "actors": [
+                    {
+                        "actor": {
+                            "type": "qwshen.document.loading.file.FileLoader",
+                            "kwargs": {
+                                "directory": "${DOCUMENTS_DIRECTORY}/pdf",
+                                "file_extensions": ".pdf",
+                                "worker": {
+                                    "type": "langchain_community.document_loaders.pdf.PyPDFLoader",
+                                    "kwargs": {
+                                        "extract_images": false
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "actor": {
+                            "type": "qwshen.document.loading.file.FileLoader",
+                            "kwargs": {
+                                "directory": "${DOCUMENTS_DIRECTORY}/txt",
+                                "recursive": false,
+                                "file_extensions": ".txt", 
+                                "worker": {
+                                    "type": "langchain_community.document_loaders.text.TextLoader",
+                                    "kwargs": {
+                                        "autodetect_encoding": true
+                                    }
+                                }
+                            }
+                        },
+                        "scheduler": {
+                            "type": "qwshen.common.scheduling.FileArrivalScheduler",
+                            "kwargs": {
+                                "directory": "${DOCUMENTS_DIRECTORY}/txt",
+                                "recursive": true
+                            }        
+                        }
+                    },
+                    {
+                        "actor": {
+                            "type": "qwshen.document.loading.file.FileLoader",
+                            "kwargs": {
+                                "directory": "${DOCUMENTS_DIRECTORY}/docx",
+                                "recursive": false,
+                                "file_extensions": ".docx", 
+                                "worker": {
+                                    "type": "langchain_community.document_loaders.UnstructuredWordDocumentLoader",
+                                    "kwargs": {}
+                                }
+                            }
+                        }
+                    }
+                ],
+                "scheduler": {
+                    "type": "qwshen.common.scheduling.CronScheduler",
+                    "kwargs": {
+                        "crons": ["18 16 * * *"]
+                    }
+                }
+            },
+            "splitting": {
+                "actor":{
+                    "type": "qwshen.document.splitting.text.TextSplitter",
+                    "kwargs": {
+                        "worker": {
+                            "type": "langchain_text_splitters.character.RecursiveCharacterTextSplitter",
+                            "kwargs": { 
+                                "chunk_size": 1600,
+                                "chunk_overlap": 640
+                            }
+                        }
+                    }
+                },
+                "concurrency": {
+                    "workers": 2
+                }
+            },
+            "indexing": {
+                "concurrency": {
+                    "workers": 1
+                },
+                "document_store": "rag_marketing"
+            }
+        }
+    ]    
+}

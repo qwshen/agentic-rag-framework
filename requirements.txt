@@ -4,6 +4,7 @@ watchdog
 croniter
 python-dotenv
 protobuf
+logging
 
 langchain
 langchain-core
@@ -13,7 +14,11 @@ langchain-ollama
 langchain-openai
 
 pypdf
+docx2txt
+unstructured
+python-docx
 psycopg[binary]
+chardet
 
 faiss-cpu
 

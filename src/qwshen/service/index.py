@@ -64,6 +64,9 @@ class DocumentLoadHandler(Runner):
             self._run(None)
             self._coordinator.documents_arrived([], "N/A", True)
 
+    def in_schedule(self) -> bool:
+        return self._scheduler is not None
+    
 class DocumentSplitHandler(Runner):
     def __init__(self, name: str, actor: SplitActor, input_queue: Queue, coordinator: DocumentCoordinator):
         super().__init__(name)
@@ -153,6 +156,12 @@ class DocumentOperator(Runner):
         for thread in threads:
             thread.join()
 
+    def index_scheduled(self) -> bool:
+        for runner in self._runners:
+            if isinstance(runner, DocumentLoadHandler) and runner.in_schedule():
+                return True
+        return False
+    
     @staticmethod
     def setup(index_def: IndexDef) -> list[Runner]:
         return [DocumentOperator(actor, index_def.context_stores) for actor in index_def.actors]

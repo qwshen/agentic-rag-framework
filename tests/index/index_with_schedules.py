@@ -6,7 +6,7 @@ from unittest.mock import patch
 tests_dir = Path(__file__).resolve().parent.parent
 args = [
   "", 
-  "--def", str(tests_dir / f"resources/index/qdrant_local_vs.json"), 
+  "--def", str(tests_dir / f"resources/index/index_with_schedules.json"), 
   "--env", str(tests_dir / "resources/application.env")
 ]
 with patch("sys.argv", args):
