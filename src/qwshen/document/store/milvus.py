@@ -1,7 +1,8 @@
+import asyncio
 from urllib.parse import urlparse
 
 from langchain_milvus import Milvus
-from pymilvus import MilvusException, connections, db, utility
+from pymilvus import MilvusException, connections, db
 
 from qwshen.common.component import DocumentStore
 from qwshen.common.argument import verify_all
@@ -34,14 +35,18 @@ class MilvusVS(DocumentStore):
         parsed_uri = urlparse(uri)
         if parsed_uri.scheme in ["http", "https"]:
             if db_name is not None:
-                self._verify_db(parsed_uri.hostname, parsed_uri.port, db_name)
+                self._verify_db(db_name, n_kwargs.get(MilvusVS._arg_connection_args, {}))
 
         self._embedding_function = n_kwargs.get(MilvusVS._arg_embedding_function, None)
-        self._interface = Milvus(**n_kwargs)
+        self._interface = asyncio.run(self._create_client(n_kwargs))
         self.verify()
 
-    def _verify_db(self, host: str, port: str, db_name: str):
-        connections.connect("default", host=host, port=port)
+    async def _create_client(self, kwargs: dict):
+        return Milvus(**kwargs)
+
+    def _verify_db(self, db_name: str, kwargs: dict):
+        n_kwargs = {k: v for k, v in kwargs.items() if k != "db_name"}
+        connections.connect(alias="default", **n_kwargs)
         try:
             existing_databases = db.list_database()
             if db_name not in existing_databases:

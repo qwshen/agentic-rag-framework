@@ -30,7 +30,9 @@ langchain-qdrant
 weaviate-client
 langchain-weaviate
 
-langchain_milvus
+pymilvus[milvus_lite]
+milvus-client
+langchain-milvus
 
 pinecone[grpc]
 langchain-pinecone

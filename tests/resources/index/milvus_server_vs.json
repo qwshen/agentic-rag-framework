@@ -13,13 +13,18 @@
                         }
                     },
                     "connection_args": {
-                        "uri": "/opt/agentic-rag-1.0.0/db/milvus/local/customers.db"
+                        "uri": "http://127.0.0.1:19530",
+                        "user": "root",
+                        "password": "Milvus",
+                        "db_name": "marketing"
                     },
                     "collection_name": "customers",
                     "index_params": {
                         "index_type": "FLAT", 
                         "metric_type": "L2"
                     },
+                    "consistency_level": "Strong",
+                    "drop_old": false,
                     "auto_id": true
                 }
             }
