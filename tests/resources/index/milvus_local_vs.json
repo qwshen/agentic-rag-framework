@@ -1,0 +1,75 @@
+{
+    "context_stores": [
+        {
+            "name": "rag_marketing",
+            "actor": {
+                "type": "qwshen.document.store.milvus.MilvusVS",
+                "kwargs": {
+                    "embedding_function": {
+                        "type": "langchain_ollama.OllamaEmbeddings",
+                        "kwargs": {
+                            "model":"${LLM_EMBEDDINGS_MODEL}",
+                            "base_url": "${LLM_INFERENCE}"
+                        }
+                    },
+                    "connection_args": {
+                        "uri": "/opt/agentic-rag-1.0.0/db/milvus/customers.db"
+                    },
+                    "collection_name": "customers",
+                    "index_params": {
+                        "index_type": "FLAT", 
+                        "metric_type": "L2"
+                    },
+                    "auto_id": true
+                }
+            }
+        }
+    ],
+    "indexing_def": [
+        {
+            "name": "marketing_indexing",
+            "loading": {
+                "actors": [
+                    {
+                        "actor": {
+                            "type": "qwshen.document.loading.file.FileLoader",
+                            "kwargs": {
+                                "directory": "${DOCUMENTS_DIRECTORY}/pdf",
+                                "file_extensions": ".pdf",
+                                "worker": {
+                                    "type": "langchain_community.document_loaders.pdf.PyPDFLoader",
+                                    "kwargs": {
+                                        "extract_images": false
+                                    }
+                                }
+                            }
+                        }
+                    }
+                ]
+            },
+            "splitting": {
+                "actor":{
+                    "type": "qwshen.document.splitting.text.TextSplitter",
+                    "kwargs": {
+                        "worker": {
+                            "type": "langchain_text_splitters.character.RecursiveCharacterTextSplitter",
+                            "kwargs": { 
+                                "chunk_size": 1600,
+                                "chunk_overlap": 640
+                            }
+                        }
+                    }
+                },
+                "concurrency": {
+                    "workers": 2
+                }
+            },
+            "indexing": {
+                "concurrency": {
+                    "workers": 1
+                },
+                "document_store": "rag_marketing"
+            }
+        }
+    ]    
+}
