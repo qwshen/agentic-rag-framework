@@ -1,0 +1,32 @@
+_type: chat
+input_variables: 
+  - question
+  - chat_history
+messages:
+  - _type: system  
+    prompt:
+      template: |
+        Given a conversation history and latest user question, you are asked to rewrite the user question by following these rules:
+          • Use the conversation history only to infer missing context (topics, entities, etc.)
+          • Replace vague references (e.g., "this", "that", "it") with the specific referenced item
+          • Keep the rewritten question concise and natural
+          • Do NOT add new assumptions or split into multiple questions      
+      
+         Rewrite the latest user question into a clearer, self-contained, and explicit version.
+         Do NOT answer the question.
+         Preserve the original intent and meaning.
+
+         You MUST respond with only the improved question as plain text. DO NOT add anything else.
+    role: system
+  - _type: human
+    prompt:
+      input_variables:
+        - chat_history
+        - question
+      template: |
+        CONVERSATION HISTORY:
+        {chat_history}
+
+        LATEST QUESTION:
+        {question}
+    role: user

@@ -1,0 +1,84 @@
+{
+    "context_stores": [
+        {
+            "name": "vs_IT_learning",
+            "actor": {
+                "type": "qwshen.document.store.chroma.ChromaVS",
+                "kwargs": {
+                    "embeddings": {
+                        "type": "langchain_ollama.OllamaEmbeddings",
+                        "kwargs": {
+                            "model":"${LLM_EMBEDDINGS_MODEL}",
+                            "base_url": "${LLM_INFERENCE}"
+                        }
+                    },
+                    "store_file": "/opt/agentic-rag-1.0.0/db/chroma/it_learning"
+                }
+            }
+        }
+    ],    
+    "service_def": {
+        "prompts": [
+            {
+                "name": "p_chat",
+                "actor": {
+                    "type": "qwshen.common.prompt.load_from_file",
+                    "kwargs": {
+                        "path": "${PROMPTS_DIRECTORY}/chat_prompt.yaml"
+                    }
+                }                
+            }
+        ],
+        "chat_models": [
+            {
+                "name": "m_chat",
+                "actor": {
+                    "type": "langchain_ollama.ChatOllama",
+                    "model_key": "model",
+                    "kwargs": {
+                        "base_url": "${LLM_INFERENCE}",
+                        "model": "${LLM_CHAT_MODEL}",
+                        "temperature": 0.35
+                    }
+                }
+            }
+        ],
+        "retrievals": [
+            {
+                "name": "r_chat",
+                "description": "IT learning support documents",
+                "search": {
+                    "type": "similarity",
+                    "kwargs": {
+                        "k": 6,
+                        "fetch_k": 16,
+                        "score_threshold": 0.8,
+                        "lambda_mult": 0.3
+                    },
+                    "document_store": "vs_IT_learning"
+                }
+            }
+        ],
+        "services":[
+            {
+                "name": "IT_learning_chat",
+                "definition": {
+                    "prompt": {
+                        "ref": "p_chat"
+                    },
+                    "context": {
+                        "ref_retrievals": ["r_chat"]
+                    },
+                    "generation": {
+                        "ref_model": "m_chat"
+                    }
+                }
+            }
+        ]
+    },
+    "logging": {
+        "directory": "${LOGGING_DIRECTORY}",
+        "level": "debug"
+    }
+}
+

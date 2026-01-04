@@ -39,7 +39,7 @@
                 }
             },
             {
-                "name": "query_refinement_prompt",
+                "name": "query_refining_prompt",
                 "actor":{
                     "type": "common.prompt.load_from_file",
                     "kwargs": {
@@ -156,8 +156,8 @@
                         }
                     },
                     "agentivity": {
-                        "query_refinement": {
-                            "ref_prompt": "query_refinement_prompt",
+                        "query_refining_prompt": {
+                            "ref_prompt": "query_refining_prompt",
                             "ref_model": "llama3.2"
                         },
                         "document_grading": {

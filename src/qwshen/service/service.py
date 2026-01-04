@@ -1,7 +1,7 @@
 import re
 from abc import abstractmethod
 from typing import Iterator
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from langchain_core.messages.ai import AIMessage  
 from langchain_core.documents.base import Document
@@ -21,6 +21,7 @@ from qwshen.common.logging import RagLogger
 from qwshen.common.chat_history import BufferWindowConversionHistory, BufferWindowConversationSummaryHistory, ConversationHistory
 
 class ServiceRunner(Runner):
+    THINKING_RGX = r"<\s*(think|thinking|analysis|reasoning|chain_of_thought|scratchpad|thoughts|deliberation|internal|hidden|steps|plan|logic)\s*>.*?<\s*/\s*\1\s*>"
     SESSION_ID: str = "session_id"
 
     def __init__(self, name: str):
@@ -45,6 +46,19 @@ class ServiceRunner(Runner):
     def cleanup(self):
         pass
 
+    @staticmethod
+    def remove_thinkings(response: str) -> str:
+        return re.sub(ServiceRunner.THINKING_RGX, "", response, flags=re.DOTALL|re.IGNORECASE).strip()
+    
+    @staticmethod
+    def match_answers(response: str, answers: list[str]) -> bool:
+        match = re.search(r"[\W_]*answer:[\W_]*\s*\s*([A-Za-z0-9-]+)", response, re.IGNORECASE)
+        if match:
+            result = match.group(1).lower()
+            return any([answer.lower() == result for answer in answers])
+        tokens = set(re.findall(r"\b\w+\b", response.lower()))
+        return bool(set([answer.lower() for answer in answers]) & tokens)
+    
 class ServiceRetrieval:
     def __init__(self, retrieval: Retrieval, store: ContextStore):
         self.retrieval = retrieval
@@ -109,15 +123,15 @@ class ContextServiceGeneration:
         self.answer_rewriting = answer_rewriting
 
 class ContextServiceAgentivity:
-    def __init__(self, query_refinement: ServiceRethinkingAgent | None,
+    def __init__(self, query_refining: ServiceRethinkingAgent | None,
             document_grading: ServiceRethinkingAgent | None,answer_grounding: ServiceRethinkingAgent | None):
-        self.query_refinement = query_refinement
+        self.query_refining = query_refining
         self.document_grading = document_grading
         self.answer_grounding = answer_grounding
 
 class AgenticRetriever(BaseRetriever):
     def __init__(self, retrievers: list[VectorStoreRetriever], agent_model: ChatModel, 
-                 query_refinement: ServiceRethinkingAgent=None, document_grading: ServiceReasoningAgent=None):
+                 query_refining: ServiceRethinkingAgent=None, document_grading: ServiceReasoningAgent=None):
         super().__init__(tags=[])
         self._retriever = None
         self._agent = None
@@ -134,9 +148,9 @@ class AgenticRetriever(BaseRetriever):
             )
 
         self._qr_variables = self._qr_prompt = self._qr_model = None
-        if query_refinement is not None:
-            self._qr_model = Creator.create(query_refinement.model.actor.type, query_refinement.model.actor.kwargs)
-            self._qr_prompt, self._qr_variables = ContextServicePrompt.create(query_refinement.prompt.actor)
+        if query_refining is not None:
+            self._qr_model = Creator.create(query_refining.model.actor.type, query_refining.model.actor.kwargs)
+            self._qr_prompt, self._qr_variables = ContextServicePrompt.create(query_refining.prompt.actor)
 
         self._dg_variables = self._dg_prompt = self._dg_model = None
         self._dg_accept_answers = self._dg_min_threshold_score = None 
@@ -165,8 +179,8 @@ class AgenticRetriever(BaseRetriever):
             self._dg_variables.var_question: query,
             self._dg_variables.var_document: document.page_content
         })
-        response = re.sub(r"<think>.*?</think>", "", self._dg_model.invoke(messages).content.strip().lower(), flags=re.DOTALL)
-        return any([answer.lower() in response for answer in self._dg_accept_answers])
+        response = ServiceRunner.remove_thinkings(self._dg_model.invoke(messages).content)
+        return ServiceRunner.match_answers(response, self._dg_accept_answers)
     
     def rewrite_query(self, query: str, session_id: str) -> str:
         if self._qr_prompt is None or self._qr_model is None:
@@ -185,16 +199,24 @@ class AgenticRetriever(BaseRetriever):
         chat_history: str = ""
         cur_iteration = 0
         while True:
-            documents = self.__fetch_relevant_documents(query)
+            all_documents = self.__fetch_relevant_documents(query)
             if not self._document_grading_required:
+                documents = all_documents
                 break
 
             if cur_iteration >= self._dg_max_iterations:
                 RagLogger.logger().info(f"Document grading reached max iterations: {self._dg_max_iterations} for query: {query}")
+                documents = all_documents
                 break
+
             cur_iteration += 1
-            relevant_score = sum([1 if self.__grade_document_relevance(query, document) else 0 for document in documents])
-            if relevant_score / len(documents) >= self._dg_min_threshold_score:
+            relevant_score = 0
+            for document in all_documents:
+                if self.__grade_document_relevance(query, document):
+                    documents.append(document)
+                    relevant_score += 1
+            RagLogger.logger().info(f"Document grading found {relevant_score} relevant documents out of {len(all_documents)} for query: {query}")
+            if relevant_score / len(all_documents) >= self._dg_min_threshold_score:
                 break
             rewrite_query, chat_history = self.rewrite_query(query, session_id)
             if rewrite_query is None:
@@ -255,7 +277,7 @@ class AgenticGenerator:
 
             inputs = {
                 self._ag_variables.var_question: user_query,
-                self._ag_variables.var_answer: re.sub(r"<think>.*?</think>", "", cur_answer.content.strip(), flags=re.DOTALL)
+                self._ag_variables.var_answer: ServiceRunner.remove_thinkings(cur_answer.content)
             }
             if self._ag_variables.var_context is not None:
                 inputs[self._ag_variables.var_context] = "\n\n".join([document.page_content for document in documents])
@@ -263,8 +285,9 @@ class AgenticGenerator:
                 inputs[self._ag_variables.var_document] = "\n\n".join([document.page_content for document in documents])
             if self._ag_variables.var_history is not None:
                 inputs[self._ag_variables.var_history] = chat_history
-            grounding_score = re.sub(r"<think>.*?</think>", "", self._ag_model.invoke(self._ag_prompt.format_messages(**inputs)).content.strip().lower(), flags=re.DOTALL)
-            if any([answer.lower() in grounding_score for answer in self._ag_accept_answers]):
+            grounding_score = ServiceRunner.remove_thinkings(self._ag_model.invoke(self._ag_prompt.format_messages(**inputs)).content)
+            RagLogger.logger().info(f"Answer grounding iteration: {cur_iteration}, grounding score: {grounding_score}, for query: {user_query}")
+            if ServiceRunner.match_answers(grounding_score, self._ag_accept_answers):
                 break
 
             cur_iteration += 1
@@ -278,9 +301,7 @@ class AgenticGenerator:
             user_query = rewritten_query
 
         if self._answer_rewriting_required and cur_answer is not None:
-            inputs = {                
-                self._ar_variables.var_answer: re.sub(r"<think>.*?</think>", "", cur_answer.content.strip(), flags=re.DOTALL)
-            }
+            inputs = { self._ar_variables.var_answer: ServiceRunner.remove_thinkings(cur_answer.content)}
             if self._ar_variables.var_question is not None:
                 inputs[self._ar_variables.var_question] = user_query
             if self._ar_variables.var_context is not None:
@@ -290,6 +311,7 @@ class AgenticGenerator:
             if self._ar_variables.var_history is not None:
                 inputs[self._ar_variables.var_history] = chat_history if chat_history is not None else ""
             cur_answer = self._ar_model.invoke(self._ar_prompt.format_messages(**inputs))
+            RagLogger.logger().info(f"Answer rewritten for query: {user_query}, for session_id: {session_id}")
         yield cur_answer
 
 class ContextService(ServiceRunner):
@@ -318,7 +340,7 @@ class ContextService(ServiceRunner):
         agent_model = self._retrieval.agent_model if self._retrieval.agent_model is not None else self._generation.model
         if len(agent_retrievers) == 0:
             raise ValueError("At least one retriever is required")
-        self._document_retriever = AgenticRetriever(agent_retrievers, agent_model, self._agentivity.query_refinement, self._agentivity.document_grading)
+        self._document_retriever = AgenticRetriever(agent_retrievers, agent_model, self._agentivity.query_refining, self._agentivity.document_grading)
         RagLogger.logger().info(f"retrievel used: {self._retrieval.get_name()}, for {self.name}")
 
         rag_chain_map = {
@@ -424,8 +446,8 @@ class ServiceOperator(Runner):
         rewriting_model = self._models.get(generation.answer_rewriting.ref_model, None)
         if (rewriting_prompt is not None and rewriting_model is None) or (rewriting_prompt is None and rewriting_model is not None):
             raise ValueError(f"Both prompt and model are required for answer rewriting.")
-        else:
-            RagLogger.logger().info(f"Setting up answer rewriting with prompt: {generation.answer_rewriting.ref_prompt} and model: {generation.answer_rewriting.ref_model}, for {self.name}")
+        elif rewriting_prompt is not None and rewriting_model is not None:
+            RagLogger.logger().info(f"Setting up answer rewriting with prompt: {rewriting_prompt} and model: {rewriting_model}, for {self.name}")
         rethinkingAgent = None if rewriting_prompt is None or rewriting_model is None else ServiceRethinkingAgent(rewriting_prompt, rewriting_model)
         return ContextServiceGeneration(model, rethinkingAgent)
 
@@ -439,8 +461,8 @@ class ServiceOperator(Runner):
         answer_grounding_model = self._models.get(agentivity.answer_grounding.ref_model, None)
         if (answer_grounding_prompt is not None and answer_grounding_model is None) or (answer_grounding_prompt is None and answer_grounding_model is not None):
             raise ValueError(f"Both prompt and model are required for answer grounding agentivity.")
-        else:
-            RagLogger.logger().info(f"Setting up answer grounding with prompt: {agentivity.answer_grounding.ref_prompt} and model: {agentivity.answer_grounding.ref_model}, for {self.name}")
+        elif answer_grounding_prompt is not None and answer_grounding_model is not None:
+            RagLogger.logger().info(f"Setting up answer grounding with prompt: {answer_grounding_prompt} and model: {answer_grounding_model}, for {self.name}")
         answer_grounding = ServiceReasoningAgent(
             prompt=answer_grounding_prompt, 
             model=answer_grounding_model,
@@ -452,8 +474,8 @@ class ServiceOperator(Runner):
         document_grading_model = self._models.get(agentivity.document_grading.ref_model, None)
         if (document_grading_prompt is not None and document_grading_model is None) or (document_grading_prompt is None and document_grading_model is not None):
             raise ValueError(f"Both prompt and model are required for document grading agentivity.")
-        else:
-            RagLogger.logger().info(f"Setting up document grading with prompt: {agentivity.document_grading.ref_prompt} and model: {agentivity.document_grading.ref_model}, for {self.name}")
+        elif document_grading_prompt is not None and document_grading_model is not None:
+            RagLogger.logger().info(f"Setting up document grading with prompt: {document_grading_prompt} and model: {document_grading_model}, for {self.name}")
         document_grading = ServiceReasoningAgent(
             prompt=document_grading_prompt, 
             model=document_grading_model,
@@ -462,18 +484,17 @@ class ServiceOperator(Runner):
             max_iterations=agentivity.document_grading.max_iterations
         ) if document_grading_prompt is not None and document_grading_model is not None else None
 
-        query_refinement_prompt = self._prompts.get(agentivity.query_refinement.ref_prompt, None)
-        query_refinement_model = self._models.get(agentivity.query_refinement.ref_model, None)
-        if (query_refinement_prompt is not None and query_refinement_model is None) or (query_refinement_prompt is None and query_refinement_model is not None):
-            raise ValueError(f"Both prompt and model are required for query refinement agentivity.")
-        else:
-            RagLogger.logger().info(f"Setting up query refinement with prompt: {agentivity.query_refinement.ref_prompt} and model: {agentivity.query_refinement.ref_model}, for {self.name}")
-        query_refinement = ServiceRethinkingAgent(
-            prompt=query_refinement_prompt, 
-            model=query_refinement_model
-        ) if query_refinement_prompt is not None and query_refinement_model is not None else None
+        query_refining_prompt = self._prompts.get(agentivity.query_refining.ref_prompt, None)
+        query_refining_model = self._models.get(agentivity.query_refining.ref_model, None)
+        if (query_refining_prompt is not None and query_refining_model is None) or (query_refining_prompt is None and query_refining_model is not None):
+            raise ValueError(f"Both prompt and model are required for query refining agentivity.")
+        elif query_refining_prompt is not None and query_refining_model is not None:
+            RagLogger.logger().info(f"Setting up query refining with prompt: {query_refining_prompt} and model: {query_refining_model}, for {self.name}")
+        query_refining = ServiceRethinkingAgent(
+            prompt=query_refining_prompt, model=query_refining_model
+        ) if query_refining_prompt is not None and query_refining_model is not None else None
 
-        return ContextServiceAgentivity(query_refinement, document_grading, answer_grounding)
+        return ContextServiceAgentivity(query_refining, document_grading, answer_grounding)
 
     def _setup_search(self, search: Search) -> ServiceRunner:
         if search.definition.retrieval not in self._retrievals:

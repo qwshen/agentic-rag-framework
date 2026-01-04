@@ -1,7 +1,7 @@
 {
     "context_stores": [
         {
-            "name": "rag_marketing",
+            "name": "rag_IT_learning",
             "actor": {
                 "type": "qwshen.document.store.chroma.ChromaVS",
                 "kwargs": {
@@ -12,14 +12,14 @@
                             "base_url": "${LLM_INFERENCE}"
                         }
                     },
-                    "store_file": "/opt/agentic-rag-1.0.0/db/chroma/marketing"
+                    "store_file": "/opt/agentic-rag-1.0.0/db/chroma/it_learning"
                 }
             }
         }
     ],
     "indexing_def": [
         {
-            "name": "marketing_indexing",
+            "name": "it_learning_indexing",
             "loading": {
                 "actors": [
                     {
@@ -78,7 +78,7 @@
                 "scheduler": {
                     "type": "qwshen.common.scheduling.CronScheduler",
                     "kwargs": {
-                        "crons": ["18 16 * * *"]
+                        "crons": ["15 11 * * *"]
                     }
                 }
             },
@@ -103,8 +103,12 @@
                 "concurrency": {
                     "workers": 1
                 },
-                "document_store": "rag_marketing"
+                "document_store": "rag_IT_learning"
             }
         }
-    ]    
+    ],
+    "logging": {
+        "directory": "${LOGGING_DIRECTORY}",
+        "level": "debug"
+    }
 }

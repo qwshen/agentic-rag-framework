@@ -44,7 +44,7 @@ class Launcher:
         return args.def_file, args.env_file
 
 
-def index():
+def test_index():
     indexers, _ = Launcher.start()
     if reduce(lambda x, y: x or y, [indexer.index_scheduled() for indexer in indexers], False):
         try:
@@ -54,10 +54,11 @@ def index():
         except (KeyboardInterrupt, SystemExit):
             pass
 
-def answer(question: str):
+def test_answer(questions: list[str], session_id: str):
     _, services = Launcher.start()
     for service, _ in services:
         print(f"Service: {service.get_name()} is serving ...")
-        print(f"Question: {question}")
-        for messages in service.process(question, kwargs={"session_id": "test_session"}):
-            print(messages)
+        for question in questions:
+            print(f"\n\nQuestion: {question}")
+            for message in service.process(question, kwargs={"session_id": session_id}):
+                print(message.content if message is not None else "\n", end="", flush=True)

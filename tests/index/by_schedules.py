@@ -6,7 +6,7 @@ from unittest.mock import patch
 tests_dir = Path(__file__).resolve().parent.parent
 args = [
   "", 
-  "--def", str(tests_dir / f"defs/index/chroma_vs.json"), 
+  "--def", str(tests_dir / f"defs/index/by_schedules.json"), 
   "--env", str(tests_dir / "application.env")
 ]
 with patch("sys.argv", args):

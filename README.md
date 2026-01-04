@@ -312,8 +312,8 @@ Agentic capabilities refer to the system’s ability to act autonomously or semi
     }
 },
 "agentivity": {
-    "query_refinement": {
-        "ref_prompt": "query_refinement_prompt",
+    "query_refining": {
+        "ref_prompt": "query_refining_prompt",
         "ref_model": "llama3.2"
     },
     "document_grading": {
@@ -384,16 +384,16 @@ This requires several additional prompts containing clear, specific instructions
 - min_threshold_score defines the minimum ratio of relevant documents to the total number of evaluated documents.
 - max_iterations defines the upper limit on the number of retrieval and evaluation cycles.
 
-Note: document grading depends on query refinement being enabled. If an insufficient number of relevant documents is identified, query refinement is invoked for the subsequent retrieval iteration.
+Note: document grading depends on query refining being enabled. If an insufficient number of relevant documents is identified, query refining is invoked for the subsequent retrieval iteration.
 
-##### 4.3.2 Query refinement - the user query is often reformulated or augmented
+##### 4.3.2 Query refining - the user query is often reformulated or augmented
 ```json
-"query_refinement": {
-    "ref_prompt": "query_refinement_prompt",
+"query_refining": {
+    "ref_prompt": "query_refining_prompt",
     "ref_model": "llama3.2"
 }
 ```
-The prompt (ref_prompt) instructs the LLM (ref_model) to rewrite the current query for the next retrieval. The following is an example of a query refinement prompt.
+The prompt (ref_prompt) instructs the LLM (ref_model) to rewrite the current query for the next retrieval. The following is an example of a query refining prompt.
 ```yaml
   _type: chat
   input_variables: 

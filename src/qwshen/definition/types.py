@@ -208,7 +208,7 @@ class ServiceGeneration:
         return ServiceGeneration(ref_model=data['ref_model'], answer_rewriting=ServiceGenerationAnswerRewriting.from_dict(data.get('answer_rewriting', {})))
 
 @dataclass(frozen=True)
-class ServiceAgentivityQueryRefinement(ServiceGenerationAgent):
+class ServiceAgentivityQueryRefining(ServiceGenerationAgent):
     pass
 
 @dataclass(frozen=True)
@@ -239,14 +239,14 @@ class ServiceAgentivityAnswerGrounding(ServiceGenerationAgent):
 
 @dataclass(frozen=True)
 class ServiceAgentivity:
-    query_refinement: ServiceAgentivityQueryRefinement = field(default_factory=ServiceAgentivityQueryRefinement)
+    query_refining: ServiceAgentivityQueryRefining = field(default_factory=ServiceAgentivityQueryRefining)
     document_grading: ServiceAgentivityDocumentGrading = field(default_factory=ServiceAgentivityDocumentGrading)
     answer_grounding: ServiceAgentivityAnswerGrounding = field(default_factory=ServiceAgentivityAnswerGrounding)
 
     @staticmethod
     def from_dict(data: Dict) -> 'ServiceAgentivity':
         return ServiceAgentivity(
-            query_refinement = ServiceAgentivityQueryRefinement.from_dict(data.get('query_refinement', {})),
+            query_refining = ServiceAgentivityQueryRefining.from_dict(data.get('query_refining', {})),
             document_grading = ServiceAgentivityDocumentGrading.from_dict(data.get('document_grading', {})),
             answer_grounding = ServiceAgentivityAnswerGrounding.from_dict(data.get('answer_grounding', {}))
         )
