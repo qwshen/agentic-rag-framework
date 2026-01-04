@@ -13,9 +13,9 @@ args = [
 session_id = "test_chat_session_001"
 
 # positive test cases
-# questions = ["What is Kafka?", "Explain event streaming.", "List a few use cases of Kafka."]
-# with patch("sys.argv", args):
-#     test_answer(questions, session_id=session_id)
+questions = ["What is Kafka?", "Explain event streaming.", "List a few use cases of Kafka."]
+with patch("sys.argv", args):
+    test_answer(questions, session_id=session_id)
 
 # negative test cases
 questions = ["What is the capital of Mars?", "Explain the color of sound.", "List a few use cases of perpetual motion machines."]

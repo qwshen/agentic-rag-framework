@@ -22,6 +22,10 @@ from qwshen.common.chat_history import BufferWindowConversionHistory, BufferWind
 
 class ServiceRunner(Runner):
     THINKING_RGX = r"<\s*(think|thinking|analysis|reasoning|chain_of_thought|scratchpad|thoughts|deliberation|internal|hidden|steps|plan|logic)\s*>.*?<\s*/\s*\1\s*>"
+    ANSWER_RGXs = [
+        r"""[\W_]*["']?(?:answer|final answer|conclusion|result|output|label|prediction|class|verdict|decision)["']?[\W_]*\s*:\s*[\W_]*["']?([A-Za-z0-9-]+)["']?[\W_]*""",
+        r"""```(?:ans|answer|final|result|output|label|class|prediction|verdict|conclusion|decision)\s*\n\s*([A-Za-z0-9-]+)\s*\n```"""
+    ]
     SESSION_ID: str = "session_id"
 
     def __init__(self, name: str):
@@ -52,12 +56,23 @@ class ServiceRunner(Runner):
     
     @staticmethod
     def match_answers(response: str, answers: list[str]) -> bool:
-        match = re.search(r"[\W_]*answer:[\W_]*\s*\s*([A-Za-z0-9-]+)", response, re.IGNORECASE)
-        if match:
-            result = match.group(1).lower()
-            return any([answer.lower() == result for answer in answers])
-        tokens = set(re.findall(r"\b\w+\b", response.lower()))
-        return bool(set([answer.lower() for answer in answers]) & tokens)
+        tokens = re.findall(r"\b\w+\b", response.lower())
+        if len(tokens) == 1:
+            return any([answer.lower() in tokens for answer in answers])
+        
+        for rgx in ServiceRunner.ANSWER_RGXs:
+            match = re.search(rgx, response, re.IGNORECASE)
+            if match:
+                result = match.group(1).lower()
+                return any([answer.lower() == result for answer in answers])
+
+        tokens = set([tokens[0], tokens[-1]])
+        result = bool(set([answer.lower() for answer in answers]) & tokens)
+        if result:
+            return True
+        
+        sentences = set(response.lower().splitlines())
+        return bool(set([f"**{answer.lower()}**" for answer in answers]) & sentences)
     
 class ServiceRetrieval:
     def __init__(self, retrieval: Retrieval, store: ContextStore):
