@@ -55,24 +55,29 @@ class ServiceRunner(Runner):
         return re.sub(ServiceRunner.THINKING_RGX, "", response, flags=re.DOTALL|re.IGNORECASE).strip()
     
     @staticmethod
-    def match_answers(response: str, answers: list[str]) -> bool:
+    def match_answers(response: str, accept_answers: list[str], reject_answers: list[str]) -> bool:
         tokens = re.findall(r"\b\w+\b", response.lower())
         if len(tokens) == 1:
-            return any([answer.lower() in tokens for answer in answers])
+            if any([answer.lower() in tokens for answer in accept_answers]):
+                return True
+            elif any([answer.lower() in tokens for answer in reject_answers]):
+                return False
         
         for rgx in ServiceRunner.ANSWER_RGXs:
             match = re.search(rgx, response, re.IGNORECASE)
             if match:
                 result = match.group(1).lower()
-                return any([answer.lower() == result for answer in answers])
+                if any([answer.lower() == result for answer in accept_answers]):
+                    return True
+                elif any([answer.lower() == result for answer in reject_answers]):
+                    return False
 
         tokens = set([tokens[0], tokens[-1]])
-        result = bool(set([answer.lower() for answer in answers]) & tokens)
-        if result:
+        if bool(set([answer.lower() for answer in accept_answers]) & tokens):
             return True
-        
-        sentences = set(response.lower().splitlines())
-        return bool(set([f"**{answer.lower()}**" for answer in answers]) & sentences)
+        elif bool(set([answer.lower() for answer in reject_answers]) & tokens):
+            return False
+        return None
     
 class ServiceRetrieval:
     def __init__(self, retrieval: Retrieval, store: ContextStore):
@@ -94,9 +99,10 @@ class ServiceRethinkingAgent:
         self.model = model
 
 class ServiceReasoningAgent(ServiceRethinkingAgent):
-    def __init__(self, prompt: Prompt, model: ChatModel, accept_answers: list[str], min_threshold_score: float = 0.6, max_iterations: int = 2):
+    def __init__(self, prompt: Prompt, model: ChatModel, accept_answers: list[str], reject_answers: list[str], min_threshold_score: float = 0.6, max_iterations: int = 2):
         super().__init__(prompt, model)
         self.accept_answers = accept_answers
+        self.reject_answers = reject_answers
         self.min_threshold_score = min_threshold_score
         self.max_iterations = max_iterations
 
@@ -174,6 +180,7 @@ class AgenticRetriever(BaseRetriever):
             self._dg_model = Creator.create(document_grading.model.actor.type, document_grading.model.actor.kwargs)
             self._dg_prompt, self._dg_variables = ContextServicePrompt.create(document_grading.prompt.actor)
             self._dg_accept_answers = document_grading.accept_answers
+            self._dg_reject_answers = document_grading.reject_answers
             self._dg_min_threshold_score = document_grading.min_threshold_score
             self._dg_max_iterations = document_grading.max_iterations
 
@@ -194,10 +201,16 @@ class AgenticRetriever(BaseRetriever):
             self._dg_variables.var_question: query,
             self._dg_variables.var_document: document.page_content
         })
-        response = ServiceRunner.remove_thinkings(self._dg_model.invoke(messages).content)
-        return ServiceRunner.match_answers(response, self._dg_accept_answers)
-    
-    def rewrite_query(self, query: str, session_id: str) -> str:
+        g_Iteration = 0
+        while g_Iteration < 3:
+            grading_score = ServiceRunner.remove_thinkings(self._dg_model.invoke(messages).content)
+            result = ServiceRunner.match_answers(grading_score, self._dg_accept_answers, self._dg_reject_answers)
+            if result is not None:
+                return result
+            RagLogger.logger().info(f"Document grading iteration: {g_Iteration}, invalid grading score for query: {query}")
+            g_Iteration += 1
+
+    def refine_query(self, query: str, session_id: str) -> str:
         if self._qr_prompt is None or self._qr_model is None:
             return None, None
         chat_history = "\n\n".join([message.content for message in ConversationHistory.get_messages(session_id)])
@@ -205,13 +218,15 @@ class AgenticRetriever(BaseRetriever):
             self._qr_variables.var_question: query,
             self._qr_variables.var_history: chat_history
         })
-        response = self._qr_model.invoke(messages).content.strip()
-        RagLogger.logger().info(f"Rewritten query from: {query} to: {response}, for session_id: {session_id}")
-        return response, chat_history
+        refined_query = self._qr_model.invoke(messages).content.strip()
+        RagLogger.logger().info(f"Refined query from: {query} to: {refined_query}, for session_id: {session_id}")
+        return refined_query, chat_history
     
     def _get_relevant_documents(self, query: str, session_id: str):
         documents: list[Document] = []
         chat_history: str = ""
+        document_grading_result = None
+
         cur_iteration = 0
         while True:
             all_documents = self.__fetch_relevant_documents(query)
@@ -231,13 +246,14 @@ class AgenticRetriever(BaseRetriever):
                     documents.append(document)
                     relevant_score += 1
             RagLogger.logger().info(f"Document grading found {relevant_score} relevant documents out of {len(all_documents)} for query: {query}")
-            if relevant_score / len(all_documents) >= self._dg_min_threshold_score:
+            document_grading_result = relevant_score / len(all_documents) >= self._dg_min_threshold_score
+            if document_grading_result:
                 break
-            rewrite_query, chat_history = self.rewrite_query(query, session_id)
-            if rewrite_query is None:
+            refined_query, chat_history = self.refine_query(query, session_id)
+            if refined_query is None:
                 break
-            query = rewrite_query
-        return query, documents, chat_history
+            query = refined_query
+        return query, documents, document_grading_result, chat_history
 
 class AgenticGenerator:
     def __init__(self, rag_chain_with_source: RunnableSequence | RunnableWithMessageHistory, prompt_variables: PromptVariables, document_retriever: AgenticRetriever, 
@@ -254,6 +270,7 @@ class AgenticGenerator:
             self._ag_model = Creator.create(answer_grounding.model.actor.type, answer_grounding.model.actor.kwargs)
             self._ag_prompt, self._ag_variables = ContextServicePrompt.create(answer_grounding.prompt.actor)
             self._ag_accept_answers = answer_grounding.accept_answers
+            self._ag_reject_answers = answer_grounding.reject_answers
             self._ag_max_iterations = answer_grounding.max_iterations
         self._answer_grounding_required = self._ag_prompt is not None and self._ag_model is not None
 
@@ -264,12 +281,15 @@ class AgenticGenerator:
             self._ar_prompt, self._ar_variables = ContextServicePrompt.create(answer_rewriting.prompt.actor)
         self._answer_rewriting_required = self._ar_prompt is not None and self._ar_model is not None
 
-    def invoke(self, user_query: str, session_id: str, kwargs: dict) -> Iterator[AIMessage]:
+    def invoke(self, user_query: str, session_id: str, kwargs: dict) -> Iterator[AIMessage]:        
+        documents_grading_result = None
+        cur_answer: AIMessage = None
+        answer_grounding_result = None
+
         cur_iteration = 0
         documents = chat_history = None
-        cur_answer: AIMessage = None
         while True:
-            user_query, documents, chat_history = self._document_retriever._get_relevant_documents(user_query, session_id)
+            user_query, documents, documents_grading_result, chat_history = self._document_retriever._get_relevant_documents(user_query, session_id)
             input = { 
                 self._prompt_variables.var_question: user_query,
             }
@@ -300,23 +320,29 @@ class AgenticGenerator:
                 inputs[self._ag_variables.var_document] = "\n\n".join([document.page_content for document in documents])
             if self._ag_variables.var_history is not None:
                 inputs[self._ag_variables.var_history] = chat_history
-            grounding_score = ServiceRunner.remove_thinkings(self._ag_model.invoke(self._ag_prompt.format_messages(**inputs)).content)
-            RagLogger.logger().info(f"Answer grounding iteration: {cur_iteration}, grounding score: {grounding_score}, for query: {user_query}")
-            if ServiceRunner.match_answers(grounding_score, self._ag_accept_answers):
-                break
+
+            g_iteration = 0
+            while g_iteration < 3:    
+                grounding_score = ServiceRunner.remove_thinkings(self._ag_model.invoke(self._ag_prompt.format_messages(**inputs)).content)
+                answer_grounding_result = ServiceRunner.match_answers(grounding_score, self._ag_accept_answers, self._ag_reject_answers)
+                if answer_grounding_result is not None:
+                    RagLogger.logger().info(f"Answer grounding iteration: {cur_iteration}, grounding score: {grounding_score}, for query: {user_query}")
+                    break
+                RagLogger.logger().info(f"Answer grounding iteration: {cur_iteration}, invalid grounding score for query: {user_query}")
+                g_iteration += 1
 
             cur_iteration += 1
             if cur_iteration >= self._ag_max_iterations:
                 RagLogger.logger().info(f"Answer grounding reached max iterations: {self._ag_max_iterations} for query: {user_query}")
                 break
-            rewritten_query, _ = self._document_retriever.rewrite_query(user_query, session_id)
-            if rewritten_query is None:
+            refined_query, _ = self._document_retriever.refine_query(user_query, session_id)
+            if refined_query is None:
                 break
-            RagLogger.logger().info(f"Rewriting query for answer grounding from: {user_query} to: {rewritten_query}, for session_id: {session_id}")
-            user_query = rewritten_query
+            RagLogger.logger().info(f"Refined query for answer grounding from: {user_query} to: {refined_query}, for session_id: {session_id}")
+            user_query = refined_query
 
-        if self._answer_rewriting_required and cur_answer is not None:
-            inputs = { self._ar_variables.var_answer: ServiceRunner.remove_thinkings(cur_answer.content)}
+        auto_answer_rewriting = True if documents_grading_result and (answer_grounding_result is None or not answer_grounding_result) else False
+        if self._answer_rewriting_required and cur_answer is not None and auto_answer_rewriting:
             if self._ar_variables.var_question is not None:
                 inputs[self._ar_variables.var_question] = user_query
             if self._ar_variables.var_context is not None:
@@ -482,6 +508,7 @@ class ServiceOperator(Runner):
             prompt=answer_grounding_prompt, 
             model=answer_grounding_model,
             accept_answers=agentivity.answer_grounding.accept_groundedness_answers, 
+            reject_answers=agentivity.answer_grounding.reject_groundedness_answers,
             max_iterations=agentivity.answer_grounding.max_iterations
         ) if answer_grounding_prompt is not None and answer_grounding_model is not None else None
 
@@ -495,6 +522,7 @@ class ServiceOperator(Runner):
             prompt=document_grading_prompt, 
             model=document_grading_model,
             accept_answers=agentivity.document_grading.accept_gradedness_answers, 
+            reject_answers=agentivity.document_grading.reject_gradedness_answers,
             min_threshold_score=agentivity.document_grading.min_threshold_score,
             max_iterations=agentivity.document_grading.max_iterations
         ) if document_grading_prompt is not None and document_grading_model is not None else None

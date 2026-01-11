@@ -54,7 +54,16 @@
                         "path": "${PROMPTS_DIRECTORY}/answer_grounding_prompt.yaml"
                     }
                 }
-            }            
+            },
+            {
+                "name": "p_answer_rewriting",
+                "actor":{
+                    "type": "qwshen.common.prompt.load_from_file",
+                    "kwargs": {
+                        "path": "${PROMPTS_DIRECTORY}/answer_rewriting_prompt.yaml"
+                    }
+                }
+            }
         ],
         "chat_models": [
             {
@@ -124,7 +133,11 @@
                         }
                     },
                     "generation": {
-                        "ref_model": "m_writing"
+                        "ref_model": "m_writing",
+                        "answer_rewriting": {
+                            "ref_prompt": "p_answer_rewriting",
+                            "ref_model": "m_writing"
+                        }
                     },
                     "agentivity": {
                         "query_refining": {
@@ -135,6 +148,7 @@
                             "ref_prompt": "p_document_grading",
                             "ref_model": "m_reasoning",
                             "accept_gradedness_answers": ["relevant", "yes"],
+                            "reject_gradedness_answers": ["irrelevant", "no"],
                             "min_threshold_score": 0.6,
                             "max_iterations": 2
                         },
@@ -142,6 +156,8 @@
                             "ref_prompt": "p_answer_grounding",
                             "ref_model": "m_reasoning",
                             "accept_groundedness_answers": ["yes"],
+                            "reject_groundedness_answers": ["no"],
+                             "min_threshold_score": 0.6,
                             "max_iterations": 3
                         }
                     }                    

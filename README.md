@@ -15,6 +15,7 @@ There are two major phases in typical RAG pipelines - Document Indexing and Answ
 
 ![RAG Pipeline](./docs/images/rag-pipeline.png)
 
+
 ### 0. Set up project
 - Install Python 3.10+ and set up a virutla environment
 - Install required packages
@@ -27,6 +28,7 @@ There are two major phases in typical RAG pipelines - Document Indexing and Answ
   ```
   
 For a concise walkthrough of the framework, please follow this [tutorial](./docs/tutorial.md).
+
 
 ### 1. Introduce RAG-Config Template
 To construct a RAG pipeline, a JSON-based configuration should be created, specifying the document sources, retrieval behavior, chat models to be used, and the agentic capabilities that govern how the system answers user queries.
@@ -53,6 +55,7 @@ The following shows the overall JSON-structore of a RAG-Config:
 }
 ```
 
+
 ### 2. Use Environment Variables
 Environment variables can be used in RAG-Configs to define environment-specific settings such as database URLs, access credentials, model names, and other configurable parameters. These variables are typically defined in a separate file and then referenced within the RAG-Config.
 
@@ -61,6 +64,7 @@ The following is an exmple:
 LLM_INFERENCE="http://127.0.0.1:11434"
 LLM_EMBEDDINGS_MODEL="llama3"
 ```
+
 
 ### 2. Setup Context Stores
 The following vector stores and databases are supported for storing indexed document embeddings:
@@ -99,6 +103,7 @@ For example, the following configuration can be used to set up PgVector:
 }
 ```
 For instructions on configuring all other vector stores and databases, see [Set up Context Stores](./docs/setup-context-stores.md)
+
 
 ### 3. Index Documents
 In a RAG system, documents are indexed first before they can be used as context knowledge for serving requests. This can be achieved by using the following configuration to run indexing services (or combining with other services):
@@ -188,6 +193,7 @@ In a RAG system, documents are indexed first before they can be used as context 
 
 In the configuration, an indexing process consists of three steps: loading, splitting, and indexing. Multiple indexing processes can be defined, each handling different document formats from different sources and persisting the results to separate vector stores.
 
+
 #### 3.1 Loading
 The loading step is to load documents from varous source locations. Upon for the formats of source documents, different act loader can be used. For details of various langchain document loaders, please check [here](https://docs.langchain.com/oss/javascript/integrations/providers/all_providers#document-loaders).
 
@@ -196,16 +202,19 @@ The loading step is to load documents from varous source locations. Upon for the
 
 Two type of schedulers are supported - cron based time scheduler and file arrival event triggering scheduler.
 
+
 #### 3.2 Splitting
 
 Once a document is loaded into memory, it goes into the splitting step which breaks the document into chunks. This is done through the configured splitter. Please check [here](https://docs.langchain.com/oss/javascript/integrations/splitters) for details of all langchain text-splitters.
 
 Use the concurrency configuration to spin up additional splitters to relieve back-pressure from the document loading step.
 
+
 #### 3.3 Indexing
 In the indexing step, splitted documents are vectorized by the embedding model configured in the context-store referenced by the document_store element. The resulting vectors are then persisted into the target vectore store.
 
 Same as splitting step, use the concurrency configuration to spin up additional vectorizers to relieve back pressure from the document splitting step.
+
 
 ### 4. Setup a RAG-Chat Application
 A simple RAG application can be defined with the following configuration:
@@ -275,6 +284,7 @@ A simple RAG application can be defined with the following configuration:
 ```
 At a minimum, a RAG application requires a prompt, a context store, and an LLM. A user question is incorporated into the prompt, which is then augmented with documents retrieved from the context store. Using this contextual knowledge, the LLM generates a response to the user’s question.
 
+
 #### 4.1 Inject user's chat history
 Please use the following configuration to inject a user’s chat history, allowing the LLM to understand the conversational context.
 ```json
@@ -289,6 +299,7 @@ Please use the following configuration to inject a user’s chat history, allowi
 - user_summary: When set to true, a summary of the user’s chat history is generated and used; otherwise, the raw messages are used.
 - window_k: the number of messages.
 
+
 #### 4.2 Enable retrieval agent
 When there are more than one retrievals being used, the model for creating an retrieval agent is required. The following shows one example:
 ```json
@@ -300,6 +311,7 @@ When there are more than one retrievals being used, the model for creating an re
 }
 ```
 Note: if there is only one retrieval even with agent configured, retrieval agent won't be created. The retrieval is used directly.
+
 
 #### 4.3 Enable agentic capabilities
 Agentic capabilities refer to the system’s ability to act autonomously or semi-autonomously to achieve specific tasks, rather than just passively responding to user queries. This can be achieved by adding the following configuration in the difinition of a service:
@@ -320,6 +332,7 @@ Agentic capabilities refer to the system’s ability to act autonomously or semi
         "ref_prompt": "document_grading_prompt",
         "ref_model": "deepseek-r1:1.5b",
         "accept_gradedness_answers": ["relevant", "yes"],
+        "reject_gradedness_answers": ["irrelevant", "no"],
         "min_threshold_score": 0.6,
         "max_iterations": 2
     },
@@ -327,11 +340,13 @@ Agentic capabilities refer to the system’s ability to act autonomously or semi
         "ref_prompt": "answer_grounding_prompt",
         "ref_model": "deepseek-r1:1.5b",
         "accept_groundedness_answers": ["yes"],
+        "reject_groundedness_answers": ["no"],
         "max_iterations": 3
     }
 }
 ```
 This requires several additional prompts containing clear, specific instructions, allowing the LLM to generate responses as intended that serve as the outputs of re-thinking or reasoning.
+
 
 ##### 4.3.1 Document grading - retrieved documents are evaluated for relevance, quality, and reliability before being used as context
 ```json
@@ -339,6 +354,7 @@ This requires several additional prompts containing clear, specific instructions
     "ref_prompt": "document_grading_prompt",
     "ref_model": "deepseek-r1:1.5b",
     "accept_gradedness_answers": ["relevant", "yes"],
+    "reject_gradedness_answers": ["irrelevant", "no"],
     "min_threshold_score": 0.6,
     "max_iterations": 2
 }
@@ -380,11 +396,15 @@ This requires several additional prompts containing clear, specific instructions
       role: user
   ```
 
-- accept_gradness_answers defines the set of acceptable answers for matching the evaluation output when the document is relevant.
+- accept_gradedness_answers defines the set of acceptable answers for matching the evaluation output when the document is relevant.
+- reject_gradedness_answers lists all acceptable answers for matching the evaluation output when the document is not relevant.
 - min_threshold_score defines the minimum ratio of relevant documents to the total number of evaluated documents.
 - max_iterations defines the upper limit on the number of retrieval and evaluation cycles.
 
-Note: document grading depends on query refining being enabled. If an insufficient number of relevant documents is identified, query refining is invoked for the subsequent retrieval iteration.
+Note: 
+- document grading depends on query refining being enabled. If an insufficient number of relevant documents is identified, query refining is invoked for the subsequent retrieval iteration.
+- If the response from the LLM (ref_model) does not match any value in accept_gradedness_answers or reject_gradedness_answers, the grading evaluation may be retried up to three times.
+
 
 ##### 4.3.2 Query refining - the user query is often reformulated or augmented
 ```json
@@ -429,18 +449,20 @@ The prompt (ref_prompt) instructs the LLM (ref_model) to rewrite the current que
       role: user
 ```
 
+
 ##### 4.3.3 Answer grounding: LLM responses are checked against the retrieved documents to prevent hallucinations and enhance factual correctness
 ```json
 "answer_grounding": {
     "ref_prompt": "answer_grounding_prompt",
     "ref_model": "deepseek-r1:1.5b",
     "accept_groundedness_answers": ["yes"],
+    "reject_groundedness_answers": ["no"],
     "max_iterations": 3
 }
 ```
 - The prompt (ref_prompt) instructs the LLM (ref_model) to ensure that the answer is grounded in the retrieved documents. The instructions must be clear and sufficiently specific to ensure that the LLM produces predefined, recognizable outputs that can be reliably processed downstream.
 
-  The following is one example of a answer grounding prompt:
+The following is one example of a answer grounding prompt:
   ```yaml
     _type: chat
     input_variables: 
@@ -482,7 +504,11 @@ The prompt (ref_prompt) instructs the LLM (ref_model) to rewrite the current que
 ```
 
 - accept_groundedness_answers defines the set of acceptable LLM outputs that indicate the response is grounded in the retrieved documents.
+- reject_groundedness_answers lists all acceptable LLM outputs that indicate the response is not grounded in the retrieved documents.
 - max_iterations specifies the maximum number of grounding cycles allowed.
+
+Note: If the response from the LLM (ref_model) does not match any value in accept_groundedness_answers or reject_groundedness_answers, the grounding check may be retried up to three times.
+
 
 ##### 4.3.4 Answer rewriting/polishing: the initial LLM output is refined for clarity, coherence, formatting, or tone before being returned to the user.
 ```json
@@ -548,5 +574,7 @@ The prompt (ref_prompt) instructs the LLM (ref_model) to rewrite the answer. The
             {documents}
       role: user
 ```
+**Import Note**: Answer rewriting is automatically invoked when document relevance is confirmed, yet the generated answer fails the grounding criteria.
+
 
 ### 5. Run as Services

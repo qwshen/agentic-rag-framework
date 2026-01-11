@@ -214,6 +214,7 @@ class ServiceAgentivityQueryRefining(ServiceGenerationAgent):
 @dataclass(frozen=True)
 class ServiceAgentivityDocumentGrading(ServiceGenerationAgent):
     accept_gradedness_answers: list[str]
+    reject_gradedness_answers: list[str]
     min_threshold_score: float
     max_iterations: int
 
@@ -221,20 +222,25 @@ class ServiceAgentivityDocumentGrading(ServiceGenerationAgent):
     def from_dict(data: Dict) -> 'ServiceAgentivityDocumentGrading':
         return ServiceAgentivityDocumentGrading(
             ref_prompt=data.get('ref_prompt', ''), ref_model=data.get('ref_model', ''),
-            accept_gradedness_answers=data.get('accept_gradedness_answers', ['relevant']), min_threshold_score=data.get('min_threshold_score', 0.5), 
+            accept_gradedness_answers=data.get('accept_gradedness_answers', ['relevant']), 
+            reject_gradedness_answers=data.get('reject_gradedness_answers', ['irrelevant']), 
+            min_threshold_score=data.get('min_threshold_score', 0.5), 
             max_iterations=data.get('max_iterations', 2)
         )
 
 @dataclass(frozen=True)
 class ServiceAgentivityAnswerGrounding(ServiceGenerationAgent):
     accept_groundedness_answers: list[str]
+    reject_groundedness_answers: list[str]
     max_iterations: int
 
     @staticmethod
     def from_dict(data: Dict) -> 'ServiceAgentivityAnswerGrounding':
         return ServiceAgentivityAnswerGrounding(
             ref_prompt=data.get('ref_prompt', ''), ref_model=data.get('ref_model', ''),
-            accept_groundedness_answers=data.get('accept_groundedness_answers', ['yes']), max_iterations=data.get('max_iterations', 3)
+            accept_groundedness_answers=data.get('accept_groundedness_answers', ['yes']), 
+            reject_groundedness_answers=data.get('reject_groundedness_answers', ['no']), 
+            max_iterations=data.get('max_iterations', 3)
         )
 
 @dataclass(frozen=True)
