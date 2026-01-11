@@ -1,19 +1,30 @@
 import streamlit as st
 import os
-import re
-import ast
-import requests
+import uuid
+from pathlib import Path
 
-from src.qwshen.launcher import Launcher
+from qwshen.launcher import Launcher
 
+##########################################################################################################
+# Note: 
+#  In order to run this test, please run by_schedule.py first to index the documents used in this test.
 #
-# run the following command:
-#  streamlit run ./src/rag_ui.py -- --def ./resources/definition.json --env ./resources/application.env
+# To launch the UI, please run the following command:
+#  streamlit run ./tests/ui.py -- --def ./tests/defs/chat/chat.json --env ./tests/application.env
 #
+##########################################################################################################
+
+# session id
+if "session_id" not in st.session_state:
+    st.session_state.session_id = str(uuid.uuid4())
 
 # services
 if "services" not in st.session_state:
-    st.session_state.services = Launcher.start()
+    tests_dir = Path(__file__).resolve().parent.parent
+    os.environ["PROMPTS_DIRECTORY"] = str(tests_dir / "tests/chat/prompts")
+
+    _, services = Launcher.start()
+    st.session_state.services = services
 
 if "cur_service" not in st.session_state:
     st.session_state.cur_service = st.session_state.services[0][0].get_name() if st.session_state.services is not None and len(st.session_state.services) > 0 else None
@@ -31,16 +42,16 @@ def response_generator(user_query):
         if len(selected_services) == 0:
             yield f"Service: {st.session_state.cur_service} is not found."
         cur_service = selected_services[0]
-        for query_response in cur_service.process(user_query):
-            yield query_response.get("answer", "")
+        for message in cur_service.process(user_query, kwargs={"session_id": st.session_state.session_id}):
+            yield message.content if message is not None else "\n"
 
-st.title("Please ask your question")
+st.title("Please ask any")
 st.markdown(
     """
         <style>
-            .st-emotion-cache-4oy321 {
+            .st-emotion-cache-1c7y2kd {
                 flex-direction: row-reverse;
-                text-align: left;
+                text-align: right;
             }
             .st-key-service_toggle {
                 position: fixed;
@@ -55,37 +66,12 @@ st.markdown(
 )
 
 with st.container(key="service_toggle"):
-    c_service_list, c_service_info = st.columns([7, 4])
-    with c_service_list:
-        st.selectbox (
-            label = 'Select Service', 
-            options = [service.get_name() for service, _ in st.session_state.services],
-            key = "cur_service",
-            label_visibility = "collapsed",
-        )
-    with c_service_info:
-        with st.popover("Prompt", use_container_width=False):
-            st.markdown(
-                """
-                <style>
-                textarea {
-                    width: 480px !important;
-                    min-width: 480px !important;
-                    max-width: 100% !important;
-                }
-                </style>
-                """,
-                unsafe_allow_html=True
-            )            
-            st.text_area(
-                label="Prompt",
-                key = "cur_prompt",
-                height=160,
-                label_visibility="collapsed"
-            )
-            col1, col2 = st.columns([4, 1])
-            with col2:
-                st.button("Apply", type="primary")
+    st.selectbox (
+        label = 'Select Service', 
+        options = [service.get_name() for service, _ in st.session_state.services],
+        key = "cur_service",
+        label_visibility = "collapsed",
+    )
 
 # Initialize chat history
 if "messages" not in st.session_state:

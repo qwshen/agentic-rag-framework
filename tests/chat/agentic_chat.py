@@ -3,6 +3,11 @@ from pathlib import Path
 from qwshen.launcher import test_answer
 from unittest.mock import patch
 
+##########################################################################################################
+# Note: 
+#  In order to run this test, please run by_schedule.py first to index the documents used in this test.
+##########################################################################################################
+
 tests_dir = Path(__file__).resolve().parent.parent
 os.environ["PROMPTS_DIRECTORY"] = str(tests_dir / "chat/prompts")
 args = [
