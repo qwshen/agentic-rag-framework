@@ -9,9 +9,11 @@ logging
 langchain
 langchain-core
 langchain-community
+langchain-experimental
 
 langchain-ollama
 langchain-openai
+llama-cpp-python
 
 pypdf
 docx2txt
@@ -21,27 +23,21 @@ psycopg[binary]
 chardet
 
 faiss-cpu
-
 chromadb 
 langchain-chroma
-
 langchain_postgres
-
 opensearch-py
-
 qdrant-client
 langchain-qdrant
-
 weaviate-client
 langchain-weaviate
-
 pymilvus[milvus_lite]
 milvus-client
 langchain-milvus
-
 pinecone[grpc]
 langchain-pinecone
 
 streamlit
+fastapi
 
 pytest

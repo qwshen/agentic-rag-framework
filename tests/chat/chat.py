@@ -16,6 +16,6 @@ args = [
   "--env", str(tests_dir / "application.env")
 ]
 session_id = "test_chat_session_001"
-questions = ["What is Kafka?", "Explain event streaming.", "List a few use cases of Kafka."]
+questions = ["What is SQL?", "Explain event streaming.", "List a few use cases of Kafka."]
 with patch("sys.argv", args):
     test_answer(questions, session_id=session_id)    
