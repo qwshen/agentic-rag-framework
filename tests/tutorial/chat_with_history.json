@@ -1,0 +1,90 @@
+{
+    "context_stores": [
+        {
+            "name": "it_learning_vs",
+            "actor": {
+                "type": "qwshen.document.store.pgvector.PgVectorVS",
+                "kwargs": {
+                    "embeddings": {
+                        "type": "langchain.embeddings.init_embeddings",
+                        "kwargs": {
+                            "model":"${LLM_EMBEDDINGS_MODEL}",
+                            "provider": "ollama",
+                            "base_url": "${LLM_EMBEDDINGS_INFERENCE}"
+                        }
+                    },
+                    "connection": "postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}",
+                    "collection_name": "bigdata-engineering"
+                }
+            }
+        }
+    ],    
+    "service_def": {
+        "prompts": [
+            {
+                "name": "it_learning_prompt",
+                "actor": {
+                    "type": "qwshen.common.prompt.load_from_file",
+                    "kwargs": {
+                        "path": "${PROMPTS_DIRECTORY}/chat_with_history_prompt.yaml"
+                    }
+                }                
+            }
+        ],
+        "chat_models": [
+            {
+                "name": "it_learning_chat_model",
+                "actor": {
+                    "type": "langchain_openai.ChatOpenAI",
+                    "kwargs": {
+                        "base_url": "${LLM_CHAT_INFERENCE}/v1",
+                        "model": "${LLM_CHAT_MODEL}",
+                        "api_key": "it_learning",
+                        "temperature": 0.35
+                    }
+                }
+            }
+        ],
+        "retrievals": [
+            {
+                "name": "it_learning_retrieval",
+                "description": "IT learning support documents",
+                "search": {
+                    "type": "similarity",
+                    "kwargs": {
+                        "k": 6,
+                        "fetch_k": 16,
+                        "score_threshold": 0.8,
+                        "lambda_mult": 0.3
+                    },
+                    "document_store": "it_learning_vs"
+                }
+            }
+        ],
+        "services":[
+            {
+                "name": "it_learning_chat",
+                "definition": {
+                    "prompt": {
+                        "ref": "it_learning_prompt",
+                        "with_history": {
+                            "use_summary": false,
+                            "window_k": 10
+                        }
+                    },
+                    "context": {
+                        "ref_retrievals": ["it_learning_retrieval"]
+                    },
+                    "generation": {
+                        "ref_model": "it_learning_chat_model"
+                    }
+                }
+            }
+        ]
+    },
+    "logging": {
+        "directory": "${LOGGING_DIRECTORY}",
+        "level": "debug"
+    }
+}
+

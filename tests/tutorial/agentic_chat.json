@@ -1,0 +1,175 @@
+{
+    "context_stores": [
+        {
+            "name": "it_learning_vs",
+            "actor": {
+                "type": "qwshen.document.store.pgvector.PgVectorVS",
+                "kwargs": {
+                    "embeddings": {
+                        "type": "langchain.embeddings.init_embeddings",
+                        "kwargs": {
+                            "model":"${LLM_EMBEDDINGS_MODEL}",
+                            "provider": "ollama",
+                            "base_url": "${LLM_EMBEDDINGS_INFERENCE}"
+                        }
+                    },
+                    "connection": "postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}",
+                    "collection_name": "bigdata-engineering"
+                }
+            }
+        }
+    ],    
+    "service_def": {
+        "prompts": [
+            {
+                "name": "it_learning_chat",
+                "actor": {
+                    "type": "qwshen.common.prompt.load_from_file",
+                    "kwargs": {
+                        "path": "${PROMPTS_DIRECTORY}/chat_with_history_prompt.yaml"
+                    }
+                }                
+            },
+            {
+                "name": "it_learning_document_grading",
+                "actor":{
+                    "type": "qwshen.common.prompt.load_from_file",
+                    "kwargs": {
+                        "path": "${PROMPTS_DIRECTORY}/document_grading_prompt.yaml"
+                    }
+                }
+            },
+            {
+                "name": "it_learning_query_refining",
+                "actor":{
+                    "type": "qwshen.common.prompt.load_from_file",
+                    "kwargs": {
+                        "path": "${PROMPTS_DIRECTORY}/query_refining_prompt.yaml"
+                    }
+                }
+            },
+            {
+                "name": "it_learning_answer_grounding",
+                "actor":{
+                    "type": "qwshen.common.prompt.load_from_file",
+                    "kwargs": {
+                        "path": "${PROMPTS_DIRECTORY}/answer_grounding_prompt.yaml"
+                    }
+                }
+            },
+            {
+                "name": "it_learning_answer_rewriting",
+                "actor":{
+                    "type": "qwshen.common.prompt.load_from_file",
+                    "kwargs": {
+                        "path": "${PROMPTS_DIRECTORY}/answer_rewriting_prompt.yaml"
+                    }
+                }
+            }
+        ],
+        "chat_models": [
+            {
+                "name": "it_learning_writing",
+                "actor": {
+                    "type": "langchain_openai.ChatOpenAI",
+                    "kwargs": {
+                        "base_url": "${LLM_CHAT_INFERENCE}/v1",
+                        "model": "${LLM_CHAT_MODEL}",
+                        "api_key": "it_learning",
+                        "temperature": 0.35
+                    }
+                }
+            },
+            {
+                "name": "it_learning_reasoning",
+                "actor": {
+                    "type": "langchain_ollama.ChatOllama",
+                    "kwargs": {
+                        "base_url": "${LLM_REASONING_INFERENCE}",
+                        "model": "${LLM_REASONING_MODEL}"
+                    }
+                }
+            },
+            {
+                "name": "it_learning_agent",
+                "actor": {
+                    "type": "langchain_ollama.ChatOllama",
+                    "kwargs": {
+                        "base_url": "${LLM_AGENT_INFERENCE}",
+                        "model": "${LLM_AGENT_MODEL}"
+                    }
+                }
+            }
+        ],
+        "retrievals": [
+            {
+                "name": "it_learning_retrieval",
+                "description": "IT learning support documents",
+                "search": {
+                    "type": "similarity",
+                    "kwargs": {
+                        "k": 6,
+                        "fetch_k": 16,
+                        "score_threshold": 0.8,
+                        "lambda_mult": 0.3
+                    },
+                    "document_store": "it_learning_vs"
+                }
+            }
+        ],
+        "services":[
+            {
+                "name": "it_learning_chat",
+                "definition": {
+                    "prompt": {
+                        "ref": "it_learning_chat",
+                        "with_history": {
+                            "use_summary": false,
+                            "window_k": 5
+                        }
+                    },
+                    "context": {
+                        "ref_retrievals": ["it_learning_retrieval"],
+                        "agent": {
+                            "ref_model": "it_learning_agent"
+                        }
+                    },
+                    "generation": {
+                        "ref_model": "it_learning_writing",
+                        "answer_rewriting": {
+                            "ref_prompt": "it_learning_answer_rewriting",
+                            "ref_model": "it_learning_writing"
+                        }
+                    },
+                    "agentivity": {
+                        "query_refining": {
+                            "ref_prompt": "it_learning_query_refining",
+                            "ref_model": "it_learning_writing"
+                        },
+                        "document_grading": {
+                            "ref_prompt": "it_learning_document_grading",
+                            "ref_model": "it_learning_reasoning",
+                            "accept_gradedness_answers": ["relevant", "yes"],
+                            "reject_gradedness_answers": ["irrelevant", "no"],
+                            "min_threshold_score": 0.6,
+                            "max_iterations": 2
+                        },
+                        "answer_grounding": {
+                            "ref_prompt": "it_learning_answer_grounding",
+                            "ref_model": "it_learning_reasoning",
+                            "accept_groundedness_answers": ["yes"],
+                            "reject_groundedness_answers": ["no"],
+                            "min_threshold_score": 0.6,
+                            "max_iterations": 3
+                        }
+                    }                    
+                }
+            }
+        ]
+    },
+    "logging": {
+        "directory": "${LOGGING_DIRECTORY}",
+        "level": "debug"
+    }
+}
+

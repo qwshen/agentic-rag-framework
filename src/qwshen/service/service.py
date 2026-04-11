@@ -36,7 +36,7 @@ class ServiceRunner(Runner):
             raise ValueError(f"Retrieval target store: {actor.target_store} does not match with context store: {store.name}")
 
         v_store = self._create(store.actor.type, store.actor.kwargs)
-        return v_store.interface().as_retriever(search_type=actor.type, search_args=actor.kwargs)
+        return v_store.interface().as_retriever(search_type=actor.type, search_kwargs=actor.kwargs)
 
     def process(self, user_query: str, kwargs: dict = {}) -> Iterator[Document]:
         pass

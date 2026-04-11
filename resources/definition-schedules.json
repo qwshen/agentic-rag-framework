@@ -431,7 +431,8 @@
                                 "chunk_size": 2400,
                                 "chunk_overlap": 280
                             }
-                        }
+                        },
+                        "initial_chunk_size": 9600
                     }
                 },
                 "concurrency": {

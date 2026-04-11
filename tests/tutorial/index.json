@@ -1,0 +1,110 @@
+{
+    "context_stores": [
+        {
+            "name": "it_learning",
+            "actor": {
+                "type": "qwshen.document.store.pgvector.PgVectorVS",
+                "kwargs": {
+                    "embeddings": {
+                        "type": "langchain.embeddings.init_embeddings",
+                        "kwargs": {
+                            "model":"${LLM_EMBEDDINGS_MODEL}",
+                            "provider": "ollama",
+                            "base_url": "${LLM_EMBEDDINGS_INFERENCE}"
+                        }
+                    },
+                    "connection": "postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}",
+                    "collection_name": "bigdata-engineering"
+                }
+            }
+        }
+    ],
+    "indexing_def": [
+        {
+            "name": "it_learning_indexing",
+            "loading": {
+                "actors": [
+                    {
+                        "actor": {
+                            "type": "qwshen.document.loading.file.FileLoader",
+                            "kwargs": {
+                                "directory": "${DOCUMENTS_DIRECTORY}/pdf",
+                                "file_extensions": ".pdf",
+                                "worker": {
+                                    "type": "langchain_community.document_loaders.pdf.PyPDFLoader",
+                                    "kwargs": {
+                                        "extract_images": false
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "actor": {
+                            "type": "qwshen.document.loading.file.FileLoader",
+                            "kwargs": {
+                                "directory": "${DOCUMENTS_DIRECTORY}/txt",
+                                "file_extensions": ".txt",
+                                "worker": {
+                                    "type": "langchain_community.document_loaders.text.TextLoader",
+                                    "kwargs": {
+                                        "encoding": "cp1252"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "actor": {
+                            "type": "qwshen.document.loading.file.FileLoader",
+                            "kwargs": {
+                                "directory": "${DOCUMENTS_DIRECTORY}/doc",
+                                "recursive": true,
+                                "file_extensions": ".docx;.doc", 
+                                "worker": {
+                                    "type": "langchain_community.document_loaders.word_document.UnstructuredWordDocumentLoader",
+                                    "kwargs": {
+                                        "mode": "single"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                ]
+            },
+            "splitting": {
+                "actor":{
+                    "type": "qwshen.document.splitting.semantic.SemanticSplitter",
+                    "kwargs": {
+                        "worker": {
+                            "type": "langchain_experimental.text_splitter.SemanticChunker",
+                            "kwargs": {
+                                "embeddings": {
+                                    "type": "langchain.embeddings.init_embeddings",
+                                    "kwargs": {
+                                        "model":"${LLM_SPLITTING_MODEL}",
+                                        "num_ctx": 16384,
+                                        "provider": "ollama",
+                                        "base_url": "${LLM_SPLITTING_INFERENCE}"
+                                    }
+                                },
+                                "breakpoint_threshold_type": "gradient",
+                                "buffer_size": 3
+                            }
+                        },
+                        "initial_chunk_size": 12288
+                    }
+                },
+                "concurrency": {
+                    "workers": 2
+                }
+            },
+            "indexing": {
+                "concurrency": {
+                    "workers": 1
+                },
+                "document_store": "it_learning"
+            }
+        }
+    ]    
+}

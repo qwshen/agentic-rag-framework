@@ -35,7 +35,7 @@ class FileLoader(DocumentLoader):
 
     def load(self, handlerCallback: Callable[[list[Document], str], NoneType]):
         for document_file in FileLoader._collectFiles(self._directory, self._file_extensions, self._recursive):
-            documents = Creator.create(self._worker_type, self._worker_kwargs | { "file_path": document_file }).load()
+            documents = Creator.create(self._worker_type, {"file_path": document_file, **self._worker_kwargs}).load()
             handlerCallback(documents, document_file)
 
     def on_event(self, event: dict, handlerCallback: Callable[[list[Document], str], NoneType]):
