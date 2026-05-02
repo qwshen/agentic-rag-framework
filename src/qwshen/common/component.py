@@ -7,6 +7,7 @@ from abc import abstractmethod, ABC
 from queue import Queue
 from typing import Callable
 from types import NoneType
+from copy import deepcopy
 
 from langchain_core.documents.base import Document
 from .utils import nvl
@@ -62,7 +63,7 @@ class DocumentHandler(Creator):
 
     @staticmethod
     def _docs_batch_size() -> int:
-        return int(os.environ.get("DOCUMENTS_PROCESING_BATCH_SIZE", 32))
+        return int(os.environ.get("DOCUMENTS_PROCESING_BATCH_SIZE", 9))
     @staticmethod
     def _queue_docs_limit() -> int:
         return int(os.environ.get("DOCUMENTS_QUEUE_MAX_SIZE", 4096))
@@ -80,15 +81,61 @@ class DocumentLoader(Creator, ABC):
         pass
 
 class DocumentSplitter(Creator):
-    def __init__(self):
+    def __init__(self, chunk_size_threshold: int = 64, chunk_size_strategy: str = "append"):
         super().__init__()
+        self._chunk_size_threshold = chunk_size_threshold
+        self._chunk_size_strategy = chunk_size_strategy
+
         self._splitter = None
 
     def split(self, documents: list[Document]):
         if self._splitter is None:
             raise RuntimeError("The splitter is not defined")
-        return self._splitter.split_documents(documents)
+        return self.compact(self._splitter.split_documents(documents))
 
+    @staticmethod
+    def _append(doc1: Document, doc2: Document) -> Document:
+        pc1 = doc1.page_content
+        pc2 = doc2.page_content
+
+        max_overlap = min(len(pc1), len(pc2))
+        overlap_len = 0
+        for j in range(max_overlap, 0, -1):
+            if pc1[-j:] == pc2[:j]:
+                overlap_len = j
+                break
+
+        doc1.page_content = doc1.page_content + " " +  pc2[overlap_len:]
+        return doc1
+
+    def compact(self, documents: list[Document]) -> list[Document]:
+        if not documents or len(documents) == 0:
+            return []
+        elif self._chunk_size_strategy == "discard":
+            chunk_size_threshold = self._chunk_size_threshold * 0.55
+            return [document for document in documents if len(document.page_content) >= chunk_size_threshold]
+        elif self._chunk_size_strategy == "append":
+            compacted_documents = []
+            chunk_size_threshold = self._chunk_size_threshold * 0.80
+            docIdx = 0
+            while docIdx < len(documents):
+                while docIdx < len(documents) and len(documents[docIdx].page_content) >= chunk_size_threshold:
+                    compacted_documents.append(deepcopy(documents[docIdx]))
+                    docIdx = docIdx + 1
+
+                if docIdx < len(documents):
+                    document = deepcopy(documents[docIdx])
+                    docIdx = docIdx + 1
+                    while docIdx < len(documents):
+                        document = DocumentSplitter._append(document, documents[docIdx])
+                        docIdx = docIdx + 1
+                        if len(document.page_content) >= chunk_size_threshold:
+                            break
+                    compacted_documents.append(document)
+            return compacted_documents
+        else:
+            raise ValueError(f"Invalid chunk size strategy: {self._chunk_size_strategy}. Supported strategies are: discard, append")
+    
 class DocumentStorable(ABC):
     @abstractmethod
     def save(self):

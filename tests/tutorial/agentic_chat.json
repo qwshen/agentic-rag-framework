@@ -109,7 +109,7 @@
                     "type": "similarity",
                     "kwargs": {
                         "k": 6,
-                        "fetch_k": 16,
+                        "fetch_k": 32,
                         "score_threshold": 0.8,
                         "lambda_mult": 0.3
                     },
@@ -160,7 +160,7 @@
                             "accept_groundedness_answers": ["yes"],
                             "reject_groundedness_answers": ["no"],
                             "min_threshold_score": 0.6,
-                            "max_iterations": 3
+                            "max_iterations": 2
                         }
                     }                    
                 }

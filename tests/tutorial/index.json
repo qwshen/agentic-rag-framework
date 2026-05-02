@@ -73,37 +73,52 @@
                 ]
             },
             "splitting": {
-                "actor":{
-                    "type": "qwshen.document.splitting.semantic.SemanticSplitter",
-                    "kwargs": {
-                        "worker": {
-                            "type": "langchain_experimental.text_splitter.SemanticChunker",
-                            "kwargs": {
-                                "embeddings": {
-                                    "type": "langchain.embeddings.init_embeddings",
-                                    "kwargs": {
-                                        "model":"${LLM_SPLITTING_MODEL}",
-                                        "num_ctx": 16384,
-                                        "provider": "ollama",
-                                        "base_url": "${LLM_SPLITTING_INFERENCE}"
-                                    }
-                                },
-                                "breakpoint_threshold_type": "gradient",
-                                "buffer_size": 3
+                "actors": [
+                    {
+                        "type": "qwshen.document.splitting.text.TextSplitter",
+                        "kwargs": {
+                            "worker": {
+                                "type": "langchain_text_splitters.character.RecursiveCharacterTextSplitter",
+                                "kwargs": { 
+                                    "chunk_size": 2000,
+                                    "chunk_overlap": 0
+                                }
                             }
-                        },
-                        "initial_chunk_size": 12288
+                        }
+                    },
+                    {
+                        "type": "qwshen.document.splitting.semantic.SemanticSplitter",
+                        "kwargs": {
+                            "worker": {
+                                "type": "langchain_experimental.text_splitter.SemanticChunker",
+                                "kwargs": {
+                                    "embeddings": {
+                                        "type": "langchain.embeddings.init_embeddings",
+                                        "kwargs": {
+                                            "model":"${LLM_SPLITTING_MODEL}",
+                                            "num_ctx": 640,
+                                            "provider": "ollama",
+                                            "base_url": "${LLM_SPLITTING_INFERENCE}"
+                                        }
+                                    },
+                                    "breakpoint_threshold_type": "standard_deviation",
+                                    "breakpoint_threshold_amount": 0.95
+                                }
+                            },
+                            "chunk_size_threshold": 1024,
+                            "chunk_size_strategy": "append"
+                        }
                     }
-                },
-                "concurrency": {
-                    "workers": 2
-                }
+                ],
+                "chunk_size_threshold": 1600,
+                "chunk_size_strategy": "append"
             },
             "indexing": {
+                "document_store": "it_learning",
                 "concurrency": {
-                    "workers": 1
+                    "workers": 3
                 },
-                "document_store": "it_learning"
+                "document_size_threshold": 320
             }
         }
     ]    
