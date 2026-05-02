@@ -6,7 +6,7 @@ from qwshen.common.logging import RagLogger
 
 class SemanticSplitter(DocumentSplitter):
     def __init__(self, kwargs: dict):
-        super().__init__()
+        super().__init__(kwargs.get("chunk_size_threshold", 64), kwargs.get("chunk_size_strategy", "append"))
 
         worker = kwargs.get("worker", None)
         if worker is None:
@@ -20,16 +20,3 @@ class SemanticSplitter(DocumentSplitter):
         if "embeddings" in worker_kwargs:
             worker_kwargs["embeddings"] = Creator.create(**worker_kwargs.get("embeddings"))
         self._splitter = Creator.create(type=worker_type, kwargs=worker_kwargs)
-
-        self._pre_spliiter = None
-        initial_chunk_size = kwargs.get("initial_chunk_size", None)
-        if initial_chunk_size is not None:
-            self._pre_spliiter = RecursiveCharacterTextSplitter(chunk_size=initial_chunk_size, chunk_overlap=0)
-
-    def split(self, documents: list[Document]):
-        if self._splitter is None:
-            raise RuntimeError("The splitter is not defined")
-
-        if self._pre_spliiter is not None:
-            documents = self._pre_spliiter.split_documents(documents)
-        return self._splitter.split_documents(documents)

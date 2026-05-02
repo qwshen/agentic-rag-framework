@@ -9,4 +9,4 @@ args = [
   "--env", str(app_dir / f"tutorial/app.env")
 ]
 with patch("sys.argv", args):
-  test_index()    
+  test_index()

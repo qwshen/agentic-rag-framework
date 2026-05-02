@@ -13,8 +13,8 @@ app_dir = Path(__file__).resolve().parent.parent
 os.environ["PROMPTS_DIRECTORY"] = str(app_dir / "chat/prompts")
 args = [
   "", 
-  "--def", str(app_dir / f"tutorial/chat.json"), 
-  # "--def", str(app_dir / f"tutorial/chat_with_history.json"), 
+  # "--def", str(app_dir / f"tutorial/chat.json"), 
+  "--def", str(app_dir / f"tutorial/chat_with_history.json"), 
   # "--def", str(app_dir / f"tutorial/agentic_chat.json"), 
   "--env", str(app_dir / f"tutorial/app.env")
 ]

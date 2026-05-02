@@ -63,33 +63,45 @@ class ConcurrentActor:
         return ConcurrentActor(actor=Actor.from_dict(data['actor']), concurrency=Concurrency.from_dict(data.get('concurrency', {})))
 
 @dataclass(frozen=True)
-class SplitActor(ConcurrentActor):
-    pass
+class SplitActor(Actor):
+    @staticmethod
+    def from_dict(data: Dict, chunk_size_threshold: int, chunk_size_strategy: str) -> 'SplitActor':
+        kwargs = data.get('kwargs', {}).copy()
+        if 'chunk_size_threshold' not in kwargs:
+            kwargs['chunk_size_threshold'] = chunk_size_threshold
+        if 'chunk_size_strategy' not in kwargs:
+            kwargs['chunk_size_strategy'] = chunk_size_strategy
+        return SplitActor(type=data['type'], kwargs=kwargs)
 
 @dataclass(frozen=True)
 class StoreActor:
     document_store: str = field(default='default_store')
     concurrency: Concurrency = field(default_factory=Concurrency)
+    document_size_threshold: int = 160
 
     @staticmethod
     def from_dict(data: Dict) -> 'StoreActor':
-        return StoreActor(document_store=data.get('document_store', 'default_store'), concurrency=Concurrency.from_dict(data.get('concurrency', {})))
+        return StoreActor(document_store=data.get('document_store', 'default_store'), concurrency=Concurrency.from_dict(data.get('concurrency', {})), document_size_threshold=data.get('document_size_threshold', 160))
 
 @dataclass(frozen=True)
 class IndexActor:
     name: str
     loaders: list[LoadActor]
-    splitter: SplitActor
+    splitters: list[SplitActor]
     indexer: StoreActor
     
     @staticmethod
     def from_dict(data: dict) -> 'IndexActor':
         load_def = data.get("loading", {})
         default_scheduler = Scheduler.from_dict(load_def.get('scheduler', {})) if 'scheduler' in load_def else None
+
+        split_def = data.get("splitting", {})
+        chunk_size_threshold = split_def.get("chunk_size_threshold", 160)
+        chunk_size_strategy = split_def.get("chunk_size_strategy", "append")
         return IndexActor(
             name=data['name'],
             loaders=[LoadActor.from_dict(actor_def, default_scheduler) for actor_def in load_def.get('actors', [])],
-            splitter=SplitActor.from_dict(data.get('splitting', {})),
+            splitters=[SplitActor.from_dict(actor_def, chunk_size_threshold, chunk_size_strategy) for actor_def in split_def.get('actors', [])],
             indexer=StoreActor.from_dict(data.get('indexing', {}))  
         )
 
