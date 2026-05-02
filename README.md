@@ -1,4 +1,4 @@
-This (Agentic) RAG Framework is a configurable Retrieval-Augmented Generation (RAG) system designed to simplify the construction, orchestration, and execution of advanced RAG pipelines. Built on LangChain 1.0.5 (requiring Python 3.10+), the framework provides a structured, extensible foundation for applications that demand accurate, grounded, and high-quality responses powered by external knowledge.
+This (Agentic) RAG Framework is a configurable Retrieval-Augmented Generation (RAG) system designed to simplify the construction, orchestration, and execution of advanced RAG pipelines. Built on LangChain 1.0.5 (requiring Python 3.10+), the framework provides a structured, extensible foundation for applications that demand accurate, grounded, and high-quality responses powered by custom knowledge.
 
 This framework enables developers to build robust RAG workflows using declarative configuration rather than custom code. By integrating retrieval, reasoning, and LLM-based decision-making, the system supports adaptive and agent-like behaviors—known as agentic RAG. This makes question answering more reliable, interpretable, and context-aware.
 
@@ -27,7 +27,7 @@ There are two major phases in typical RAG pipelines - Document Indexing and Answ
   pip install . -e
   ```
   
-For a concise walkthrough of the framework, please follow this [tutorial](./docs/tutorial.md).
+For a concise walkthrough of the framework, please follow this [tutorial](./tutorial/README.md).
 
 
 ### 1. Introduce RAG-Config Template
@@ -66,7 +66,7 @@ LLM_EMBEDDINGS_MODEL="llama3"
 ```
 
 
-### 2. Setup Context Stores
+### 3. Setup Context Stores
 The following vector stores and databases are supported for storing indexed document embeddings:
 - FAISS
 - Chroma
@@ -105,7 +105,7 @@ For example, the following configuration can be used to set up PgVector:
 For instructions on configuring all other vector stores and databases, see [Set up Context Stores](./docs/setup-context-stores.md)
 
 
-### 3. Index Documents
+### 4. Index Documents
 In a RAG system, documents are indexed first before they can be used as context knowledge for serving requests. This can be achieved by using the following configuration to run indexing services (or combining with other services):
 
 ```json
@@ -163,23 +163,27 @@ In a RAG system, documents are indexed first before they can be used as context 
                 }
             },
             "splitting": {
-                "actor":{
-                    "type": "qwshen.document.splitting.text.TextSplitter",
-                    "kwargs": {
-                        "worker": {
-                            "type": "langchain_text_splitters.character.RecursiveCharacterTextSplitter",
-                            "kwargs": { 
-                                "chunk_size": 1600,
-                                "chunk_overlap": 640
+                "actors": [
+                    {
+                        "type": "qwshen.document.splitting.text.TextSplitter",
+                        "kwargs": {
+                            "worker": {
+                                "type": "langchain_text_splitters.character.RecursiveCharacterTextSplitter",
+                                "kwargs": { 
+                                    "chunk_size": 1600,
+                                    "chunk_overlap": 640
+                                }
                             }
-                        }
+                        },
+                        "chunk_size_threshold": 320,
+                        "chunk_size_strategy": "discard"
                     }
-                },
-                "concurrency": {
-                    "workers": 3
-                }
+                ],
+                "chunk_size_threshold": 1024,
+                "chunk_size_strategy": "append"
             },
             "indexing": {
+                "document_size_threshold": 160,
                 "concurrency": {
                     "workers": 3
                 },
@@ -194,7 +198,7 @@ In a RAG system, documents are indexed first before they can be used as context 
 In the configuration, an indexing process consists of three steps: loading, splitting, and indexing. Multiple indexing processes can be defined, each handling different document formats from different sources and persisting the results to separate vector stores.
 
 
-#### 3.1 Loading
+#### 4.1 Loading
 The loading step is to load documents from varous source locations. Upon for the formats of source documents, different act loader can be used. For details of various langchain document loaders, please check [here](https://docs.langchain.com/oss/javascript/integrations/providers/all_providers#document-loaders).
 
 - For initial indexing, no schedulers should be configured. The indexing process stops after all documents have been indexed.
@@ -203,20 +207,22 @@ The loading step is to load documents from varous source locations. Upon for the
 Two type of schedulers are supported - cron based time scheduler and file arrival event triggering scheduler.
 
 
-#### 3.2 Splitting
+#### 4.2 Splitting
 
-Once a document is loaded into memory, it goes into the splitting step which breaks the document into chunks. This is done through the configured splitter. Please check [here](https://docs.langchain.com/oss/javascript/integrations/splitters) for details of all langchain text-splitters.
+Once a document is loaded into memory, it goes into the splitting step which breaks the document into chunks. This is done through the configured splitters. Please check [here](https://docs.langchain.com/oss/javascript/integrations/splitters) for details of all langchain text-splitters.
 
-Use the concurrency configuration to spin up additional splitters to relieve back-pressure from the document loading step.
-
-
-#### 3.3 Indexing
-In the indexing step, splitted documents are vectorized by the embedding model configured in the context-store referenced by the document_store element. The resulting vectors are then persisted into the target vectore store.
-
-Same as splitting step, use the concurrency configuration to spin up additional vectorizers to relieve back pressure from the document splitting step.
+During the splitting process, small documents may be either combined or discarded depending on the *chunk_size_threshold* and the selected *chunk_size_strategy* (either append or discard). The *chunk_size_threshold* and *chunk_size_strategy* can be configured for each act splitter or at splitting level for all act splitter. The *chunk_size_threshold* and *chunk_size_strategy* for specific act splitters take higher priority.
 
 
-### 4. Setup a RAG-Chat Application
+#### 4.3 Indexing
+In the indexing step, splitted documents are vectorized by the embedding model configured in the context-store referenced by the *document_store* element. The resulting vectors are then persisted into the target vectore store.
+
+The *document_size_threshold* determines the size limit for documents to be persisted.
+
+Use the concurrency configuration to spin up additional vectorizers to relieve back pressure from the document splitting step.
+
+
+### 5. Setup a RAG-Chat Application
 A simple RAG application can be defined with the following configuration:
 ```json
 "service_def": {
@@ -285,7 +291,7 @@ A simple RAG application can be defined with the following configuration:
 At a minimum, a RAG application requires a prompt, a context store, and an LLM. A user question is incorporated into the prompt, which is then augmented with documents retrieved from the context store. Using this contextual knowledge, the LLM generates a response to the user’s question.
 
 
-#### 4.1 Inject user's chat history
+#### 5.1 Inject user's chat history
 Please use the following configuration to inject a user’s chat history, allowing the LLM to understand the conversational context.
 ```json
 "prompt": {
@@ -300,7 +306,7 @@ Please use the following configuration to inject a user’s chat history, allowi
 - window_k: the number of messages.
 
 
-#### 4.2 Enable retrieval agent
+#### 5.2 Enable retrieval agent
 When there are more than one retrievals being used, the model for creating an retrieval agent is required. The following shows one example:
 ```json
 "context": {
@@ -313,7 +319,7 @@ When there are more than one retrievals being used, the model for creating an re
 Note: if there is only one retrieval even with agent configured, retrieval agent won't be created. The retrieval is used directly.
 
 
-#### 4.3 Enable agentic capabilities
+#### 5.3 Enable agentic capabilities
 Agentic capabilities refer to the system’s ability to act autonomously or semi-autonomously to achieve specific tasks, rather than just passively responding to user queries. This can be achieved by adding the following configuration in the difinition of a service:
 ```json
 "generation": {
@@ -348,7 +354,7 @@ Agentic capabilities refer to the system’s ability to act autonomously or semi
 This requires several additional prompts containing clear, specific instructions, allowing the LLM to generate responses as intended that serve as the outputs of re-thinking or reasoning.
 
 
-##### 4.3.1 Document grading - retrieved documents are evaluated for relevance, quality, and reliability before being used as context
+##### 5.3.1 Document grading - retrieved documents are evaluated for relevance, quality, and reliability before being used as context
 ```json
 "document_grading": {
     "ref_prompt": "document_grading_prompt",
@@ -406,7 +412,7 @@ Note:
 - If the response from the LLM (ref_model) does not match any value in accept_gradedness_answers or reject_gradedness_answers, the grading evaluation may be retried up to three times.
 
 
-##### 4.3.2 Query refining - the user query is often reformulated or augmented
+##### 5.3.2 Query refining - the user query is often reformulated or augmented
 ```json
 "query_refining": {
     "ref_prompt": "query_refining_prompt",
@@ -450,7 +456,7 @@ The prompt (ref_prompt) instructs the LLM (ref_model) to rewrite the current que
 ```
 
 
-##### 4.3.3 Answer grounding: LLM responses are checked against the retrieved documents to prevent hallucinations and enhance factual correctness
+##### 5.3.3 Answer grounding: LLM responses are checked against the retrieved documents to prevent hallucinations and enhance factual correctness
 ```json
 "answer_grounding": {
     "ref_prompt": "answer_grounding_prompt",
@@ -510,7 +516,7 @@ The following is one example of a answer grounding prompt:
 Note: If the response from the LLM (ref_model) does not match any value in accept_groundedness_answers or reject_groundedness_answers, the grounding check may be retried up to three times.
 
 
-##### 4.3.4 Answer rewriting/polishing: the initial LLM output is refined for clarity, coherence, formatting, or tone before being returned to the user.
+##### 5.3.4 Answer rewriting/polishing: the initial LLM output is refined for clarity, coherence, formatting, or tone before being returned to the user.
 ```json
 "generation": {
     "ref_model": "deepseek-r1:1.5b",

@@ -1,5 +1,4 @@
 import os
-import sys
 from pathlib import Path
 from qwshen.launcher import Launcher
 from unittest.mock import patch
@@ -9,14 +8,14 @@ from unittest.mock import patch
 #  In order to run this test, please run by_schedule.py first to index the documents used in this test.
 ##########################################################################################################
 
-app_dir = Path(__file__).resolve().parent.parent
-os.environ["PROMPTS_DIRECTORY"] = str(app_dir / "chat/prompts")
+app_dir = Path(__file__).resolve().parent
+os.environ["PROMPTS_DIRECTORY"] = str(app_dir / "prompts")
 args = [
   "", 
-  # "--def", str(app_dir / f"tutorial/chat.json"), 
-  "--def", str(app_dir / f"tutorial/chat_with_history.json"), 
-  # "--def", str(app_dir / f"tutorial/agentic_chat.json"), 
-  "--env", str(app_dir / f"tutorial/app.env")
+  # "--def", str(app_dir / f"chat.json"), 
+  "--def", str(app_dir / f"chat_with_history.json"), 
+  # "--def", str(app_dir / f"agentic_chat.json"), 
+  "--env", str(app_dir / f"app.env")
 ]
 session_id = "it_learning_chat_session_001"
 with patch("sys.argv", args):

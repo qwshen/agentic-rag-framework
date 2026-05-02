@@ -46,27 +46,29 @@
                 ]
             },
             "splitting": {
-                "actor":{
-                    "type": "qwshen.document.splitting.text.TextSplitter",
-                    "kwargs": {
-                        "worker": {
-                            "type": "langchain_text_splitters.character.RecursiveCharacterTextSplitter",
-                            "kwargs": { 
-                                "chunk_size": 1600,
-                                "chunk_overlap": 640
+                "actors": [
+                    {
+                        "type": "qwshen.document.splitting.text.TextSplitter",
+                        "kwargs": {
+                            "worker": {
+                                "type": "langchain_text_splitters.character.RecursiveCharacterTextSplitter",
+                                "kwargs": { 
+                                    "chunk_size": 1600,
+                                    "chunk_overlap": 640
+                                }
                             }
                         }
                     }
-                },
-                "concurrency": {
-                    "workers": 2
-                }
+                ],
+                "chunk_size_threshold": 1024,
+                "chunk_size_strategy": "append"                    
             },
             "indexing": {
                 "concurrency": {
                     "workers": 1
                 },
-                "document_store": "rag_mgnt"
+                "document_store": "rag_mgnt",
+                "document_size_threshold": 240
             }
         }
     ]    

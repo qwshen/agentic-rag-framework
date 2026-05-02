@@ -17,6 +17,7 @@ from qwshen.definition.index import IndexDef
 
 class DocumentIndexHandler(Runner):
     POLL_INTERVAL_SECONDS = 9
+    POLL_SLEEP_SECONDS = 3
 
     def __init__(self, name: str, actor: Actor, input_queue: Queue, document_size_threshold: int):
         DocumentHandler.__init__(self, [])
@@ -46,8 +47,7 @@ class DocumentIndexHandler(Runner):
                 if done:
                     break
             except Empty:
-                RagLogger.logger().info(f"{self.name} --> No documents received in the last 9 seconds, checking if done ...")
-                time.sleep(1)
+                time.sleep(self.POLL_SLEEP_SECONDS)
 
 class DocumentSplitHandler(DocumentHandler):
     def __init__(self, splitters: list[SplitActor], output_queues: list[Queue], loadersCount: int):

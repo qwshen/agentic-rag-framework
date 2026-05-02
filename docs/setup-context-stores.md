@@ -1,10 +1,11 @@
 The following lists how to set up all supported vector stores.
+
 #### 1. FAISS 
 - model: name of the embedding model
 - base_url: url of the model inference
 - store_file: full path of the store file
 
-The following example shows how to use FAISS to persist sales documnets. The store file is located at /opt/db/faiss/sales. Embeddings are generated using the Llama 3 model served by Ollama at http://127.0.0.1:11434.
+The following example demonstrates how to use FAISS to store and manage sales documnets. The index is stored at */opt/db/faiss/sales*. Embeddings are generated using the Llama 3 model, hosted via Ollama at *http://127.0.0.1:11434*.
 
 ```json
 {
@@ -30,7 +31,7 @@ The following example shows how to use FAISS to persist sales documnets. The sto
 - base_url: url of the model inference
 - store_file: full path of the store file
 
-The following example shows how to use Chroma to persist marketing documnets. The store file is located at /opt/db/chroma/marketing. Embeddings are generated using the Llama 3 model served by Ollama at http://127.0.0.1:11434.
+The following example shows how to use Chroma to store and manage marketing documnets. The index is stored at */opt/db/chroma/marketing*. Embeddings are generated using the Llama 3 model, hosted via Ollama at *http://127.0.0.1:11434*.
 
 ```json        
 {
@@ -58,7 +59,7 @@ The following example shows how to use Chroma to persist marketing documnets. Th
     - postgresql+psycopg://${username}:${password}@${hostname}:${port}/${database-name}
 - collection_name: name of the collection/table.
 
-This following example shows how to use PgVector to persist human resources documents. The PostgreSQL instance with pgvector runs at 127.0.0.1:6024 and is accessed using the langchain user. Embeddings are generated using the Llama 3 model served by Ollama at http://127.0.0.1:11434.
+This following example demostrates how to use PgVector to store and manage human resources documents. The PostgreSQL instance, with pgvector extension enabled, runs at 127.0.0.1:6024 and is accessed using the *langchain* user. Embeddings are generated using the Llama 3 model, hosted via Ollama at *http://127.0.0.1:11434*.
 
 ```json
 {
@@ -80,16 +81,9 @@ This following example shows how to use PgVector to persist human resources docu
 }
 ```
 
-Note: to set up and use a test local PgVector store, please run the following docker container:
-```shell
-docker pull pgvector/pgvector:pg16
-
-docker run --name pgvector-container -e POSTGRES_USER=langchain -e POSTGRES_PASSWORD=langchain -e POSTGRES_DB=langchain -p 6024:5432 -d pgvector/pgvector:pg16
-```  
-
 #### 4. OpenSearch
 
-The following example shows how to use OpenSearch to persist customer documents. The OpenSearch instance is hosted at http://127.0.0.1:9600 with faiss engine. Embeddings are generated using the Llama 3 model served by Ollama at http://127.0.0.1:11434.
+The following example demostrates how to use OpenSearch to store and manage customer documents. The OpenSearch instance,  with faiss engine, runs at *http://127.0.0.1:9600*. Embeddings are generated using the Llama 3 model, hosted via Ollama at *http://127.0.0.1:11434*.
 
 ```json
 {
@@ -112,29 +106,11 @@ The following example shows how to use OpenSearch to persist customer documents.
 }
 ```
 
-Note: to set up and use a test local OpenSearch store, please run the following docker container:
-
-```
-docker pull opensearchproject/opensearch:latest
-
-docker run -d -p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" -e "plugins.security.disabled=true" -e "OPENSEARCH_INITIAL_ADMIN_PASSWORD=PwD4aDm@LoCAl" opensearchproject/opensearch:latest
-```
-
-To test if the server is up and running:
-```
-curl http://localhost:9200 -ku admin:PwD4aDm@LoCAl
-```
-
-To query data inside:
-```
- curl -X GET http://localhost:9200/customers/_search?pretty -ku admin:PwD4aDm@LoCAl
- ```
-
 #### 5. Qdrant
 
-The following examples show how to use Qdrant to persist customer documents. Embeddings are generated using the Llama 3 model served by Ollama at http://127.0.0.1:11434.
+The following examples demostreate how to use Qdrant to store and manage customer documents in different modes. Embeddings are generated using the Llama 3 model, hosted via Ollama at *http://127.0.0.1:11434*.
 
-##### 5.1 Local mode. The database file is located at /opt/db/qdrant. 
+##### 5.1 Local mode. The index is stored at /opt/db/qdrant. 
 
 ```json
 {
@@ -161,7 +137,8 @@ The following examples show how to use Qdrant to persist customer documents. Emb
 }
 ```
 
-##### 5.2 Server mode. A Qdrant instance is set up at http://localhost:6333 with api key as "test-api-key".
+##### 5.2 Server mode. A Qdrant instance runs at *http://localhost:6333* with api key as "test-api-key".
+
 ```json
 {
     "name": "rag_mgnt",
@@ -192,9 +169,10 @@ The following examples show how to use Qdrant to persist customer documents. Emb
 
 #### 6. Weaviate
 
-The following examples show how to use Weaviate to psersist customer documents in different deployment modes. Embeddings are generated using the Llama 3 model served by Ollama at http://127.0.0.1:11434.
+The following examples show how to use Weaviate to store and manage customer documents in different deployment modes. Embeddings are generated using the Llama 3 model, hosted via Ollama at *http://127.0.0.1:11434*.
 
-##### 6.1 Embedded mode with data file being located at /opt/db/weaviate/customers.
+##### 6.1 Embedded mode with index stored at /opt/db/weaviate/customers.
+
 ```json
 {
     "name": "rag_weaviate_embedded",
@@ -223,6 +201,7 @@ The following examples show how to use Weaviate to psersist customer documents i
 ```
 
 ##### 6.2 Local mode (normally for development) - a local weaviate instance is running
+
 ```json
 {
     "name": "rag_weaviate_local",
@@ -251,6 +230,7 @@ The following examples show how to use Weaviate to psersist customer documents i
 ```
 
 ##### 6.3 Custom mode - a standalone weaviate server is running (remotely)
+
 ```json
 {
     "name": "rag_weaviate_custom",
@@ -282,6 +262,7 @@ The following examples show how to use Weaviate to psersist customer documents i
 ```
 
 ##### 6.4 Cloud mode - weaviate service is running in cloud.
+
 ```json
 {
     "name": "rag_weaviate_cloud",
@@ -309,9 +290,11 @@ The following examples show how to use Weaviate to psersist customer documents i
 ```
 
 #### 7. Milvus
-The following examples show how to use Milvus to store customer documents in local and server modes. Embeddings are generated using the Llama 3 model served by Ollama at http://127.0.0.1:11434.
 
-##### 7.1 Local mode with data file in local storage.
+The following examples demostrate how to use Milvus to store and manage customer documents in local and server modes. Embeddings are generated using the Llama 3 model, hosted via Ollama at *http://127.0.0.1:11434*.
+
+##### 7.1 Local mode with index stored in local storage.
+
 ```json
 {
     "name": "rag_milvus_local",
@@ -373,7 +356,9 @@ The following examples show how to use Milvus to store customer documents in loc
 ```
 
 #### 8. Pipecone
-The following example shows how to use pipecore to store customer documents in pipecone cloud environment. Embeddings are generated using the Llama 3 model served by Ollama at http://127.0.0.1:11434.
+
+The following example shows how to use pipecore to store and manage customer documents in pipecone cloud environment. Embeddings are generated using the Llama 3 model, hosted via Ollama at *http://127.0.0.1:11434*.
+
 ```json
 {
     "name": "rag_pipecone",
