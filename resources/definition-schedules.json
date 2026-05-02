@@ -319,23 +319,25 @@
                 }
             },
             "splitting": {
-                "actor":{
-                    "type": "document.splitting.text.TextSplitter",
-                    "kwargs": {
-                        "worker": {
-                            "type": "langchain_text_splitters.character.RecursiveCharacterTextSplitter",
-                            "kwargs": { 
-                                "chunk_size": 1600,
-                                "chunk_overlap": 640
+                "actors": [
+                    {
+                        "type": "document.splitting.text.TextSplitter",
+                        "kwargs": {
+                            "worker": {
+                                "type": "langchain_text_splitters.character.RecursiveCharacterTextSplitter",
+                                "kwargs": { 
+                                    "chunk_size": 1600,
+                                    "chunk_overlap": 640
+                                }
                             }
                         }
                     }
-                },
-                "concurrency": {
-                    "workers": 3
-                }
+                ],
+                "chunk_size_threshold": 1024,
+                "chunk_size_strategy": "append"
             },
             "indexing": {
+                "document_size_threshold": 320,
                 "concurrency": {
                     "workers": 3
                 },
@@ -422,22 +424,22 @@
                 }
             },
             "splitting": {
-                "actor": {
-                    "type": "document.splitting.semantic.SemanticSplitter",
-                    "kwargs": {
-                        "worker": {
-                            "type": "langchain_text_splitters.character.RecursiveCharacterTextSplitter",
-                            "kwargs": { 
-                                "chunk_size": 2400,
-                                "chunk_overlap": 280
+                "actors": [
+                    {
+                        "type": "document.splitting.semantic.SemanticSplitter",
+                        "kwargs": {
+                            "worker": {
+                                "type": "langchain_text_splitters.character.RecursiveCharacterTextSplitter",
+                                "kwargs": { 
+                                    "chunk_size": 2400,
+                                    "chunk_overlap": 280
+                                }
                             }
                         },
-                        "initial_chunk_size": 9600
+                        "chunk_size_threshold": 320,
+                        "chunk_size_strategy": "discard"
                     }
-                },
-                "concurrency": {
-                    "workers": 3
-                }
+                ]
             },
             "indexing": {
                 "concurrency": {
