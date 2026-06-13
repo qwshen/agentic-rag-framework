@@ -121,5 +121,9 @@
                 "document_size_threshold": 320
             }
         }
-    ]    
+    ],
+    "logging": {
+        "directory": "${LOGGING_DIRECTORY}",
+        "level": "debug"
+    }
 }

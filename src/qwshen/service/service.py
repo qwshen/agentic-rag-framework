@@ -112,8 +112,7 @@ class SearchService(ServiceRunner):
         RagLogger.logger().info(f"Processing user-query: {user_query}, with {self.name}")
         for documents in self._document_retriever.stream(user_query, **kwargs):
             for document in documents:
-                yield { "metadata": document.metadata }
-                yield { "answer": document.page_content }
+                yield document
 
     def get_long_name(self):
         return f"{self.name} - search with {self._retrieval.name}"
