@@ -584,3 +584,16 @@ The prompt (ref_prompt) instructs the LLM (ref_model) to rewrite the answer. The
 
 
 ### 5. Run as Services
+- Start the api service as follows:
+```shell
+python ./src/api.py --def ./tutorial/def.json --env ./tutorial/app.env
+```
+
+- Submit request
+```shell
+curl --location 'http://127.0.0.1:8099/completion?sid=111-2222-33-56789-00' \
+--header 'ctx-api-token: api-test-token-08312' --header 'Content-Type: application/json' \
+--data '{ "user_query": "How to learn SQL programming? }'
+```
+
+- Run service in Docker container
