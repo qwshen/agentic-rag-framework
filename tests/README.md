@@ -32,7 +32,7 @@ To run through all unit tests, please follow the following steps:
   ```shell
   ollama pull qwen3:8b
   ollama pull nomic-embed-text:v1.5
-  ollama pull gpt-oss:20b
+  ollama pull llama3.2
   ollama pull deepseek-r1:1.5b
   ```
 
@@ -76,5 +76,15 @@ To run through all unit tests, please follow the following steps:
 - please copy a few txt files into /opt/agentic-rag-1.0.0/documents/txt
 - please copy a few word-docx into /opt/agentic-rag-1.0.0/documents/docx
 
-#### 3. Other setups
-Each unit test may include setup instructions at the top of the file—please follow them to configure the required environment.
+#### 3. Index documents in Chroma store
+```shell
+python ./tests/index/chroma_vs.py
+```
+
+#### 4. Launch a simple UI for question completion
+```shell
+streamlit run ./tests/ui.py -- --def ./tests/defs/chat/chat.json --env ./tests/application.env
+```
+
+#### 5. Other setups
+Each unit test may include setup instructions at the top of the file, please follow the instructions to configure the required environment.

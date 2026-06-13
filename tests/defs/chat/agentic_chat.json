@@ -106,10 +106,7 @@
                 "search": {
                     "type": "similarity",
                     "kwargs": {
-                        "k": 6,
-                        "fetch_k": 16,
-                        "score_threshold": 0.3,
-                        "lambda_mult": 0.8
+                        "k": 6
                     },
                     "document_store": "vs_IT_learning"
                 }
