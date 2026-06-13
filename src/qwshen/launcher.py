@@ -1,7 +1,5 @@
 import argparse
-import time
 from threading import Thread
-from functools import reduce
 
 from qwshen.common.component import Runner
 from qwshen.definition.parse import Parser
@@ -42,23 +40,3 @@ class Launcher:
         if args.def_file is None:
             raise RuntimeError("Please provide definition file.")
         return args.def_file, args.env_file
-
-
-def test_index():
-    indexers, _ = Launcher.start()
-    if reduce(lambda x, y: x or y, [indexer.index_scheduled() for indexer in indexers], False):
-        try:
-            print("Indexing scheduled. Press Ctrl+C to exit.")
-            while True:
-                time.sleep(30)
-        except (KeyboardInterrupt, SystemExit):
-            pass
-
-def test_answer(questions: list[str], session_id: str):
-    _, services = Launcher.start()
-    for service, _ in services:
-        print(f"Service: {service.get_name()} is serving ...")
-        for question in questions:
-            print(f"\n\nQuestion: {question}")
-            for message in service.process(question, kwargs={"session_id": session_id}):
-                print(message.content if message is not None else "\n", end="", flush=True)

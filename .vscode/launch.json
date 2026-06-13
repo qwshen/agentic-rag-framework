@@ -2,18 +2,15 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: Debug Tests",
+            "name": "Python Debugger: Current File",
             "type": "debugpy",
             "request": "launch",
-            "module": "pytest",
-            "args": [
-                "${workspaceFolder}/tests"
-            ],
+            "program": "${file}",
+            "args": ["--def", "${workspaceFolder}/nudges/def.json", "--env", "${workspaceFolder}/nudges/app.env"],
+            "console": "integratedTerminal",
             "env": {
                 "PYTHONPATH": "${workspaceFolder}/src"
-            },
-            "console": "integratedTerminal",
-            "justMyCode": true
+            }
         }
     ]
 }

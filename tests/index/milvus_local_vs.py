@@ -1,7 +1,8 @@
 
 from pathlib import Path
-from qwshen.launcher import test_index
 from unittest.mock import patch
+
+from base import test_index
 
 tests_dir = Path(__file__).resolve().parent.parent
 args = [

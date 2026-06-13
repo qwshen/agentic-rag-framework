@@ -37,7 +37,9 @@ langchain-milvus
 pinecone[grpc]
 langchain-pinecone
 
-streamlit
 fastapi
+uvicorn 
+sse-starlette
+streamlit
 
 pytest

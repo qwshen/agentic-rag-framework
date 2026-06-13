@@ -1,7 +1,8 @@
 import os
 from pathlib import Path
-from qwshen.launcher import test_answer
 from unittest.mock import patch
+
+from base import test_answer
 
 ##########################################################################################################
 # Note: 
