@@ -4,7 +4,6 @@ watchdog
 croniter
 python-dotenv
 protobuf
-logging
 
 langchain
 langchain-core
@@ -13,7 +12,6 @@ langchain-experimental
 
 langchain-ollama
 langchain-openai
-llama-cpp-python
 
 pypdf
 docx2txt

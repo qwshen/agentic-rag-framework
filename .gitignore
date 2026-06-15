@@ -1,6 +1,7 @@
 **/__pycache__
 .venv
 *.egg-info/
-build/
+build/packages
 logs/
 nudges/
+it-learning/
