@@ -3,7 +3,6 @@ from typing import Iterator
 from fastapi import FastAPI, HTTPException
 from starlette.requests import Request
 from sse_starlette import EventSourceResponse
-import json
 from functools import reduce
 
 from qwshen.common.logging import RagLogger
@@ -84,14 +83,14 @@ class ContextAPI(FastAPI):
     def _init_setup():
         indexers, services = Launcher.start()
         if reduce(lambda x, y: x or y, [indexer.index_scheduled() for indexer in indexers], False):
-            RagLogger.logger.info("Indexing scheduled.")
+            RagLogger.logger().info("Indexing scheduled.")
 
         api_token: str =  os.environ.get(CTX_API_TOKEN.upper().replace("-", "_"), None)
         if api_token is None or len(api_token) <= 0:
             msg = f"Server error - {CTX_API_TOKEN.upper()} is missing in environment"
-            RagLogger.logger.error(msg)
+            RagLogger.logger().error(msg)
             raise HTTPException(501, msg)
-        
+                
         return api_token, services
 
     @staticmethod

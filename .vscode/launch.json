@@ -6,7 +6,7 @@
             "type": "debugpy",
             "request": "launch",
             "program": "${file}",
-            "args": ["--def", "${workspaceFolder}/nudges/def.json", "--env", "${workspaceFolder}/nudges/app.env"],
+            "args": ["--def", "${workspaceFolder}/nudges/definition.json", "--env", "${workspaceFolder}/nudges/application.env"],
             "console": "integratedTerminal",
             "env": {
                 "PYTHONPATH": "${workspaceFolder}/src"

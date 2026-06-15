@@ -596,4 +596,13 @@ curl --location 'http://127.0.0.1:8099/completion?sid=111-2222-33-56789-00' \
 --data '{ "user_query": "How to learn SQL programming? }'
 ```
 
-- Run service in Docker container
+#### 5.1 Run service in Docker container
+- Build docker image
+```shell
+docker build -t qwshen/agentic-rag:1.0.0 .
+```
+
+- Run a container
+```shell
+docker run --name agentic-rag-1.0.0 -d --restart unless-stopped -e TZ=America/Toronto -v ~/Projects/agentic-rag/it-learning:/agentic-rag-1.0.0 -p 8089:8089 qwshen/agentic-rag:1.0.0
+```
