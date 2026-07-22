@@ -125,21 +125,17 @@ class ChatModel:
 
 @dataclass(frozen=True)
 class RetrievalActor(Actor):
-    target_store: str = field(default='default_store')
-
-    @staticmethod
-    def from_dict(data: Dict) -> 'RetrievalActor':
-        return RetrievalActor(type=data['type'], target_store=data.get('document_store'), kwargs=data.get('kwargs', {}))
+    pass
 
 @dataclass(frozen=True)
 class Retrieval:
     name: str
     description: str
-    search: RetrievalActor = field(default_factory=RetrievalActor)
+    actor: RetrievalActor = field(default_factory=RetrievalActor)
 
     @staticmethod
     def from_dict(data: Dict) -> 'Retrieval':
-        return Retrieval(name=data['name'], description=data['description'], search=RetrievalActor.from_dict(data.get('search')))
+        return Retrieval(name=data['name'], description=data['description'], actor=RetrievalActor.from_dict(data.get('actor')))
 
 @dataclass(frozen=True)
 class SearchActor:
@@ -162,14 +158,16 @@ class Search:
 @dataclass(frozen=True)
 class ServicePromptWithHistory:
     enabled: bool = False
+    storage: str = field(default="")
     use_summary:  bool = False
     window_k: int = -1
 
     @staticmethod
     def from_dict(data: Dict) -> 'ServicePromptWithHistory':
-        window_k = data.get('window_k', -1)
+        storage = data.get("storage", "memory")
         use_summary = data.get('use_summary', False)
-        return ServicePromptWithHistory(enabled=(window_k > 0), use_summary=use_summary, window_k=window_k)
+        window_k = data.get('window_k', -1)
+        return ServicePromptWithHistory(enabled=(window_k > 0), storage=storage, use_summary=use_summary, window_k=window_k)
 
 @dataclass(frozen=True)
 class ServicePrompt:
@@ -192,10 +190,11 @@ class ServiceContextAgent:
 class ServiceContext:
     ref_retrievals: list[str]
     agent: ServiceContextAgent = field(default_factory=ServiceContextAgent)
+    fallback_retrieval: str = field(default=None)
 
     @staticmethod
     def from_dict(data: Dict) -> 'ServiceContext':
-        return ServiceContext(ref_retrievals=data['ref_retrievals'], agent=ServiceContextAgent.from_dict(data.get("agent", {})))
+        return ServiceContext(ref_retrievals=data['ref_retrievals'], agent=ServiceContextAgent.from_dict(data.get("agent", {})), fallback_retrieval=data['fallback_retrieval'])
 
 @dataclass(frozen=True)
 class ServiceGenerationAgent:

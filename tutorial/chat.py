@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from qwshen.launcher import Launcher
 from unittest.mock import patch
+import uuid
 
 ##########################################################################################################
 # Note: 
@@ -13,11 +14,11 @@ os.environ["PROMPTS_DIRECTORY"] = str(app_dir / "prompts")
 args = [
   "", 
   # "--def", str(app_dir / f"chat.json"), 
-  "--def", str(app_dir / f"chat_with_history.json"), 
-  # "--def", str(app_dir / f"agentic_chat.json"), 
+  # "--def", str(app_dir / f"chat_with_history.json"), 
+  "--def", str(app_dir / f"agentic_chat.json"), 
   "--env", str(app_dir / f"app.env")
 ]
-session_id = "it_learning_chat_session_001"
+session_id = str(uuid.uuid5(uuid.NAMESPACE_URL, "it_learning_chat_session_001"))
 with patch("sys.argv", args):
     _, services = Launcher.start()
 

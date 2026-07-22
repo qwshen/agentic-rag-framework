@@ -25,6 +25,24 @@
                 "actors": [
                     {
                         "actor": {
+                            "type": "qwshen.document.loading.db.DbLoader",
+                            "kwargs":{
+                                "connection": "postgresql+psycopg://pn_admin:password123@localhost:6024/portfolio_nudges",
+                                "table_name": "ticker_news",
+                                "columns": { 
+                                    "content": ["title", "related_ticker", "summary"],
+                                    "metadata": ["published_date", "provider", "canonical_url"]
+                                },
+                                "filter": {
+                                    "ts_column": "created_at",
+                                    "start_ts": "2025-01-01 00:00:00",
+                                    "end_ts": "20260-7-20 23:59:59"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "actor": {
                             "type": "qwshen.document.loading.file.FileLoader",
                             "kwargs": {
                                 "directory": "${DOCUMENTS_DIRECTORY}/pdf",

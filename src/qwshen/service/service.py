@@ -10,7 +10,7 @@ from qwshen.definition.service import Service, Search
 from qwshen.common.component import Runner
 from qwshen.common.component import Creator
 from qwshen.common.logging import RagLogger
-from qwshen.common.chat_history import BufferWindowConversionHistory, BufferWindowConversationSummaryHistory
+from qwshen.common.chat_history import BufferWindowConversionHistory, BufferWindowConversationSummaryHistory, PostgresWindowConversationHistory, PostgresWindowConversationSummaryHistory
 
 from .types import ServiceRetrieval, ServiceRetrievalAgent, ServiceRethinkingAgent, ServiceReasoningAgent, ContextServicePrompt, \
     ContextServiceGeneration, ContextServiceAgentivity, ServiceRunner
@@ -39,11 +39,10 @@ class ContextService(ServiceRunner):
         chat_model = Creator.create(self._generation.model.actor.type, self._generation.model.actor.kwargs)
         RagLogger.logger().info(f"chat-model used: {self._generation.model.name}, for {self.name}")
         
-        agent_retrievers = [self._get_retriever(retrieval.retrieval.search, retrieval.store) for retrieval in self._retrieval.retrievals]
-        agent_model = self._retrieval.agent_model if self._retrieval.agent_model is not None else self._generation.model
-        if len(agent_retrievers) == 0:
-            raise ValueError("At least one retriever is required")
-        self._document_retriever = AgenticRetriever(agent_retrievers, agent_model, self._agentivity.query_refining, self._agentivity.document_grading)
+        agent_retrievers = [self._get_retriever(retrieval.retrieval, retrieval.store) for retrieval in self._retrieval.retrievals]
+        agent_model = self._retrieval.agent_model
+        fallback_retriever = self._get_retriever(self._retrieval.fallback_retrieval.retrieval, self._retrieval.fallback_retrieval.store)
+        self._document_retriever = AgenticRetriever(agent_retrievers, agent_model, fallback_retriever, self._agentivity.query_refining, self._agentivity.document_grading)
         RagLogger.logger().info(f"retrievel used: {self._retrieval.get_name()}, for {self.name}")
 
         rag_chain_map = {
@@ -53,21 +52,45 @@ class ContextService(ServiceRunner):
         if self._prompt_variables.var_history is not None:
             rag_chain_map[self._prompt_variables.var_history] = RunnableLambda(lambda input, run_manager = None: input[self._prompt_variables.var_history])
             rag_chain = RunnableMap(rag_chain_map) | prompt_template | chat_model
-            (use_summary, window_k) = (self._prompt.with_history.use_summary, self._prompt.with_history.window_k) if self._prompt.with_history is not None else (False, 9)
-            if use_summary:
-                self._rag_chain_with_source = BufferWindowConversationSummaryHistory.create_chain_with_history(
-                    rag_chain,                     
-                    self._prompt_variables.var_question, self._prompt_variables.var_history, 
-                    chat_model, self._prompt.with_history.window_k
-                )
-                RagLogger.logger().info(f"Using summary history with k={window_k} for {self.name}")
+            (storage, use_summary, window_k) = (self._prompt.with_history.storage, self._prompt.with_history.use_summary, self._prompt.with_history.window_k) if self._prompt.with_history is not None else ("memory", False, 9)
+            if storage == "memory":
+                if use_summary:
+                    self._rag_chain_with_source = BufferWindowConversationSummaryHistory.create_chain_with_history(
+                        rag_chain=rag_chain,                     
+                        var_input=self._prompt_variables.var_question, 
+                        var_history=self._prompt_variables.var_history, 
+                        model=chat_model, 
+                        k=self._prompt.with_history.window_k
+                    )
+                    RagLogger.logger().info(f"Using summary history with k={window_k} for {self.name}")
+                else:
+                    self._rag_chain_with_source = BufferWindowConversionHistory.create_chain_with_history(
+                        rag_chain=rag_chain, 
+                        var_input=self._prompt_variables.var_question, 
+                        var_history=self._prompt_variables.var_history, 
+                        k=self._prompt.with_history.window_k
+                    )
+                    RagLogger.logger().info(f"Using window history with k={window_k} for {self.name}")
             else:
-                self._rag_chain_with_source = BufferWindowConversionHistory.create_chain_with_history(
-                    rag_chain, 
-                    self._prompt_variables.var_question, self._prompt_variables.var_history, 
-                    self._prompt.with_history.window_k
-                )
-                RagLogger.logger().info(f"Using window history with k={window_k} for {self.name}")
+                if use_summary:
+                    self._rag_chain_with_source = PostgresWindowConversationSummaryHistory.create_chain_with_history(
+                        rag_chain=rag_chain,
+                        db_url=storage,
+                        var_input=self._prompt_variables.var_question, 
+                        var_history=self._prompt_variables.var_history, 
+                        model=chat_model, 
+                        k=self._prompt.with_history.window_k
+                    )
+                    RagLogger.logger().info(f"Using postgres-summary history with k={window_k} for {self.name}")
+                else:
+                    self._rag_chain_with_source = PostgresWindowConversationHistory.create_chain_with_history(
+                        rag_chain=rag_chain, 
+                        db_url=storage,
+                        var_input=self._prompt_variables.var_question, 
+                        var_history=self._prompt_variables.var_history, 
+                        k=self._prompt.with_history.window_k
+                    )
+                    RagLogger.logger().info(f"Using postgres-window history with k={window_k} for {self.name}")
         else:
             self._rag_chain_with_source = RunnableMap(rag_chain_map) | prompt_template | chat_model
 
@@ -97,15 +120,15 @@ class SearchService(ServiceRunner):
     def __init__(self, name: str, retrieval: Retrieval, store: ContextStore):
         super().__init__(name)
 
-        if retrieval.search.target_store != store.name:
-            raise ValueError(f"Retrieval target store: {retrieval.search.target_store} does not match with context store: {store.name}")
+        if retrieval.actor.target_store != store.name:
+            raise ValueError(f"Retrieval target store: {retrieval.actor.target_store} does not match with context store: {store.name}")
         self._retrieval = retrieval
         self._store = store
         self._document_retriever = None
 
     def run(self):
         RagLogger.logger().info(f"retrievel used: {self._retrieval.name} with store: {self._store.name}, for {self.name}")
-        document_retriever = self._get_retriever(self._retrieval.search, self._store)
+        document_retriever = self._get_retriever(self._retrieval.actor, self._store)
         self._document_retriever = document_retriever
 
     def process(self, user_query: str, kwargs: dict = {}) -> Iterator[Document]:
@@ -156,7 +179,8 @@ class ServiceOperator(Runner):
     def _prepare_retrieval_agent(self, context: ServiceContext) -> ServiceRetrievalAgent:
         retrievals = [self._prepare_retrieval(retrieval_name) for retrieval_name in context.ref_retrievals]
         agent_model = self._models.get(context.agent.ref_model, None)
-        return ServiceRetrievalAgent(retrievals, agent_model)
+        fallback_retrieval = self._prepare_retrieval(context.fallback_retrieval)
+        return ServiceRetrievalAgent(retrievals, agent_model, fallback_retrieval)
 
     def _prepare_agentivity(self, agentivity: ServiceAgentivity) -> ContextServiceAgentivity:
         answer_grounding_prompt = self._prompts.get(agentivity.answer_grounding.ref_prompt, None)
@@ -209,10 +233,13 @@ class ServiceOperator(Runner):
 
     def _prepare_retrieval(self, rerieval_name: str) -> ServiceRetrieval:
         retrieval = self._retrievals.get(rerieval_name)
-        stores = [store for store in self._context_stores.values() if store.name == retrieval.search.target_store]
-        if len(stores) != 1:
-            raise ValueError(f"Context store not found for {retrieval.search.target_store}")
-        return ServiceRetrieval(retrieval, stores[0])
+        document_store = retrieval.actor.kwargs.get("document_store", None)
+        if document_store is not None:
+            stores = [store for store in self._context_stores.values() if store.name == document_store]
+            if len(stores) != 1:
+                raise ValueError(f"Context store not found for {retrieval.actor.target_store}")
+            document_store = stores[0]
+        return ServiceRetrieval(retrieval, document_store)
     
     @staticmethod
     def setup(service_def: ServiceDef) -> list[Runner, list[str]]:

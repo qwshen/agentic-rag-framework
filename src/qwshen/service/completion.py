@@ -44,6 +44,7 @@ class AgenticCompletion:
         documents = chat_history = None
         while True:
             user_query, documents, documents_grading_result, chat_history = self._document_retriever._get_relevant_documents(user_query, session_id)
+
             input = { 
                 self._prompt_variables.var_question: user_query,
             }
@@ -75,15 +76,11 @@ class AgenticCompletion:
             if self._ag_variables.var_history is not None:
                 inputs[self._ag_variables.var_history] = chat_history
 
-            g_iteration = 0
-            while g_iteration < 3:    
-                grounding_score = AgenticRetriever.remove_thinkings(self._ag_model.invoke(self._ag_prompt.format_messages(**inputs)).content)
-                answer_grounding_result = AgenticRetriever.match_answers(grounding_score, self._ag_accept_answers, self._ag_reject_answers)
-                if answer_grounding_result is not None:
-                    RagLogger.logger().info(f"Answer grounding iteration: {cur_iteration}, grounding score: {grounding_score}, for query: {user_query}")
-                    break
-                RagLogger.logger().info(f"Answer grounding iteration: {cur_iteration}, invalid grounding score for query: {user_query}")
-                g_iteration += 1
+            grounding_score = AgenticRetriever.remove_thinkings(self._ag_model.invoke(self._ag_prompt.format_messages(**inputs)).content)
+            answer_grounding_result = AgenticRetriever.match_answers(grounding_score, self._ag_accept_answers, self._ag_reject_answers)
+            RagLogger.logger().info(f"Answer grounding score: {grounding_score}, for query: {user_query}")
+            if answer_grounding_result:
+                break
 
             cur_iteration += 1
             if cur_iteration >= self._ag_max_iterations:
@@ -97,6 +94,9 @@ class AgenticCompletion:
 
         auto_answer_rewriting = True if documents_grading_result and (answer_grounding_result is None or not answer_grounding_result) else False
         if self._answer_rewriting_required and cur_answer is not None and auto_answer_rewriting:
+            inputs = {
+                self._ar_variables.var_answer: AgenticRetriever.remove_thinkings(cur_answer.content)
+            }
             if self._ar_variables.var_question is not None:
                 inputs[self._ar_variables.var_question] = user_query
             if self._ar_variables.var_context is not None:

@@ -407,11 +407,6 @@ This requires several additional prompts containing clear, specific instructions
 - min_threshold_score defines the minimum ratio of relevant documents to the total number of evaluated documents.
 - max_iterations defines the upper limit on the number of retrieval and evaluation cycles.
 
-Note: 
-- document grading depends on query refining being enabled. If an insufficient number of relevant documents is identified, query refining is invoked for the subsequent retrieval iteration.
-- If the response from the LLM (ref_model) does not match any value in accept_gradedness_answers or reject_gradedness_answers, the grading evaluation may be retried up to three times.
-
-
 ##### 5.3.2 Query refining - the user query is often reformulated or augmented
 ```json
 "query_refining": {
@@ -593,7 +588,7 @@ python ./src/api.py --def ./tutorial/def.json --env ./tutorial/app.env
 ```shell
 curl --location 'http://127.0.0.1:8099/completion?sid=111-2222-33-56789-00' \
 --header 'ctx-api-token: api-test-token-08312' --header 'Content-Type: application/json' \
---data '{ "user_query": "How to learn SQL programming? }'
+--data '{ "user_query": "How to learn SQL programming?" }'
 ```
 
 #### 5.1 Run service in Docker container

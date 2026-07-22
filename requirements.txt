@@ -9,6 +9,7 @@ langchain
 langchain-core
 langchain-community
 langchain-experimental
+langchain-tools
 
 langchain-ollama
 langchain-openai
@@ -34,6 +35,9 @@ milvus-client
 langchain-milvus
 pinecone[grpc]
 langchain-pinecone
+
+langchain-tavily
+langchain-postgres
 
 fastapi
 uvicorn 

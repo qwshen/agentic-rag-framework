@@ -1,13 +1,14 @@
 from abc import abstractmethod
 from typing import Iterator
 from dataclasses import dataclass
+import copy
 
 from langchain_core.documents.base import Document
+from langchain_core.tools import Tool
 
 from qwshen.common.component import Creator
 from qwshen.common.component import Runner
 from qwshen.definition.types import Actor, ContextStore, Prompt, ChatModel, ContextStore, Retrieval, ServicePromptWithHistory, RetrievalActor
-from langchain_core.vectorstores.base import VectorStoreRetriever
 
 class ServiceRetrieval:
     def __init__(self, retrieval: Retrieval, store: ContextStore):
@@ -15,12 +16,13 @@ class ServiceRetrieval:
         self.store = store
 
 class ServiceRetrievalAgent:
-    def __init__(self, retrievals: list[ServiceRetrieval], agent_model: ChatModel):
+    def __init__(self, retrievals: list[ServiceRetrieval], agent_model: ChatModel, fallback_retrieval: ServiceRetrieval):
         self.retrievals = retrievals
         self.agent_model = agent_model
+        self.fallback_retrieval = fallback_retrieval
 
     def get_name(self):
-        names = [f"{retrieval.retrieval.name} with store: {retrieval.store.name}" for retrieval in self.retrievals]
+        names = [f"""{retrieval.retrieval.name} with {retrieval.store.name if retrieval.store is not None else "n/a"}""" for retrieval in self.retrievals]
         return ", ".join(names)
     
 class ServiceRethinkingAgent:
@@ -86,12 +88,18 @@ class ServiceRunner(Runner):
     def __init__(self, name: str):
         super().__init__(name)
 
-    def _get_retriever(self, actor: RetrievalActor, store: ContextStore) -> VectorStoreRetriever:
-        if actor.target_store != store.name:
-            raise ValueError(f"Retrieval target store: {actor.target_store} does not match with context store: {store.name}")
+    def _get_retriever(self, retrieval: Retrieval, store: ContextStore) -> Tool:
+        kwargs = copy.deepcopy(retrieval.actor.kwargs)
+        kwargs["name"] = retrieval.name
+        kwargs["description"] = retrieval.description
 
-        v_store = self._create(store.actor.type, store.actor.kwargs)
-        return v_store.interface().as_retriever(search_type=actor.type, search_kwargs=actor.kwargs)
+        document_store = retrieval.actor.kwargs.get("document_store", None)
+        if document_store is not None and store is not None and document_store != store.name:
+            raise ValueError(f"document store from the retrieval and context store are not matching - [{document_store} --> {store.name}]")
+        elif document_store is not None:
+            kwargs["document_store"] = store
+
+        return Creator.create(retrieval.actor.type, kwargs)
 
     def process(self, user_query: str, kwargs: dict = {}) -> Iterator[Document]:
         pass

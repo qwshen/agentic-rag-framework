@@ -104,16 +104,33 @@
         "retrievals": [
             {
                 "name": "it_learning_retrieval",
-                "description": "IT learning support documents",
-                "search": {
-                    "type": "similarity",
+                "description": "To retrieve IT learning support documents from a local vector store",
+                "actor": {
+                    "type": "qwshen.document.retrieval.vs.VSRetriever",
                     "kwargs": {
-                        "k": 6,
-                        "fetch_k": 32,
-                        "score_threshold": 0.8,
-                        "lambda_mult": 0.3
-                    },
-                    "document_store": "it_learning_vs"
+                        "document_store": "it_learning_vs",
+                        "search_type": "similarity",
+                        "search_kwargs": {
+                            "k": 6,
+                            "fetch_k": 32,
+                            "score_threshold": 0.8,
+                            "lambda_mult": 0.3
+                        }
+                    }
+                }
+            },
+            {
+                "name": "it_learning_websearch",
+                "description": "To search IT learning information from the Internet",
+                "actor": {
+                    "type": "qwshen.document.retrieval.web.TavilyRetriever",
+                    "kwargs": {
+                        "worker_type":  "langchain_tavily.TavilySearch",
+                        "worker_kwargs": {
+                            "search_depth": "basic",
+                            "max_results": 5
+                        }
+                    }
                 }
             }
         ],
@@ -124,6 +141,7 @@
                     "prompt": {
                         "ref": "it_learning_chat",
                         "with_history": {
+                            "storage": "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}",
                             "use_summary": false,
                             "window_k": 5
                         }
@@ -132,33 +150,18 @@
                         "ref_retrievals": ["it_learning_retrieval"],
                         "agent": {
                             "ref_model": "it_learning_agent"
-                        }
+                        },
+                        "fallback_retrieval": "it_learning_websearch"
                     },
                     "generation": {
-                        "ref_model": "it_learning_writing",
-                        "answer_rewriting": {
-                            "ref_prompt": "it_learning_answer_rewriting",
-                            "ref_model": "it_learning_writing"
-                        }
+                        "ref_model": "it_learning_writing"
                     },
                     "agentivity": {
-                        "query_refining": {
-                            "ref_prompt": "it_learning_query_refining",
-                            "ref_model": "it_learning_writing"
-                        },
                         "document_grading": {
                             "ref_prompt": "it_learning_document_grading",
                             "ref_model": "it_learning_reasoning",
                             "accept_gradedness_answers": ["relevant", "yes"],
                             "reject_gradedness_answers": ["irrelevant", "no"],
-                            "min_threshold_score": 0.6,
-                            "max_iterations": 2
-                        },
-                        "answer_grounding": {
-                            "ref_prompt": "it_learning_answer_grounding",
-                            "ref_model": "it_learning_reasoning",
-                            "accept_groundedness_answers": ["yes"],
-                            "reject_groundedness_answers": ["no"],
                             "min_threshold_score": 0.6,
                             "max_iterations": 2
                         }

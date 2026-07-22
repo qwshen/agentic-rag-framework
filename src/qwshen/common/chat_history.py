@@ -2,6 +2,8 @@ from threading import Lock, Thread, Event
 import time
 from datetime import datetime
 from pydantic import BaseModel, Field
+import psycopg
+
 from langchain_core.chat_history import BaseChatMessageHistory
 from langchain_core.messages import BaseMessage
 from langchain_core.runnables.history import RunnableWithMessageHistory
@@ -9,8 +11,10 @@ from langchain_core.runnables import ConfigurableFieldSpec
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.prompts import SystemMessagePromptTemplate, HumanMessagePromptTemplate, ChatPromptTemplate
 from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_postgres import PostgresChatMessageHistory
 
 class ConversationHistory():
+    _TABLE_NAME = "chat_history"
     _SESSION_EXPIRATION_SECONDS = 3600    
     lock: Lock = Lock()
     stop_event = Event()
@@ -124,13 +128,111 @@ class BufferWindowConversationSummaryHistory(BaseChatMessageHistory, BaseModel):
         return ConversationHistory.add(session_id=session_id, messageHistory=BufferWindowConversationSummaryHistory(m=m, k=k))
 
     @staticmethod
-    def create_chain_with_history(rag_chain, var_input: str, var_history: str, m: BaseChatModel, k: int=4):
+    def create_chain_with_history(rag_chain, var_input: str, var_history: str, model: BaseChatModel, k: int=4):
         return RunnableWithMessageHistory(
             rag_chain,
-            get_session_history=lambda session_id: BufferWindowConversationSummaryHistory.get_chat_history(session_id, m=m, k=k),
+            get_session_history=lambda session_id: BufferWindowConversationSummaryHistory.get_chat_history(session_id, m=model, k=k),
             input_messages_key=var_input,
             history_messages_key=var_history,
             history_factory_config=[
                 ConfigurableFieldSpec(id="session_id", annotation=str, default="id_default", name="Session Id", description="The session ID to use for the chat history")
             ]
         )
+
+
+class PostgresWindowConversationHistory(BaseChatMessageHistory):
+    def __init__(self, session_id, db_url: str, k=8):
+        sync_conn = psycopg.connect(db_url)
+        PostgresChatMessageHistory.create_tables(sync_conn, ConversationHistory._TABLE_NAME)
+        self.history = PostgresChatMessageHistory(ConversationHistory._TABLE_NAME, session_id, sync_connection=sync_conn)
+        self.k = k
+
+    @property
+    def messages(self):
+        return self.history.messages[-self.k:]
+
+    def add_messages(self, messages):
+        self.history.add_messages(messages)
+
+    def clear(self):
+        self.history.clear()
+
+    @staticmethod
+    def get_chat_history(session_id: str, db_url: str, k: int=4):
+        return PostgresWindowConversationHistory(session_id=session_id,db_url=db_url, k=k)
+
+    @staticmethod
+    def create_chain_with_history(rag_chain, db_url: str, var_input: str, var_history: str, k: int=4):
+        return RunnableWithMessageHistory(
+            rag_chain,
+            get_session_history=lambda session_id: PostgresWindowConversationHistory.get_chat_history(session_id, db_url=db_url, k=k),
+            input_messages_key=var_input,
+            history_messages_key=var_history,
+            history_factory_config=[
+                ConfigurableFieldSpec(id="session_id", annotation=str, name="Session Id", description="Conversation identifier")
+            ]
+        )        
+
+
+class PostgresWindowConversationSummaryHistory(BaseChatMessageHistory, BaseModel):
+    def __init__(self, session_id, db_url: str, model: BaseChatModel, k=8):
+        sync_conn = psycopg.connect(db_url)
+        PostgresChatMessageHistory.create_tables(sync_conn, ConversationHistory._TABLE_NAME)
+        self.history = PostgresChatMessageHistory("chat_history", session_id, sync_connection=sync_conn)
+        self.k = k
+        self.m = model
+        self.ts_last_accessed: datetime = datetime.now
+
+    @property
+    def messages(self):
+        return self.history.messages[-self.k:]
+
+    def add_messages(self, messages: list[BaseMessage]) -> None:
+        existing_summary = self.history.pop(0).content if len(self.messages) > 0 else None
+        self.history.extend(messages)
+        self.history = self.history[-self.k:]
+
+        summary_messages = None
+        conversation_messages = "\n\n".join(f"User: {message.content}" if isinstance(message, HumanMessage) else f"AI: {message.content}" for message in self.messages)
+        if existing_summary is None:
+            summary_prompt = ChatPromptTemplate.from_messages([
+                SystemMessagePromptTemplate.from_template(
+                    "Given the following conversations, generate a summary. Ensuring to maintain as much relevant information as possible."
+                ),
+                HumanMessagePromptTemplate.from_template(
+                    "Conversions:\n{conversation_messages}"
+                )
+            ])
+            summary_messages = summary_prompt.format_messages(**{"conversation_messages": conversation_messages})
+        else:
+            summary_prompt = ChatPromptTemplate.from_messages([
+                SystemMessagePromptTemplate.from_template(
+                    "Given the existing conversation summary and all following conversations, generate a new summary. Ensuring to maintain as much relevant information as possible."
+                ),
+                HumanMessagePromptTemplate.from_template(
+                    "Existing Summary:\n{existing_summary}\n\nConversions:\n{conversation_messages}"
+                )
+            ])
+            summary_messages = summary_prompt.format_messages(**{"existing_summary": existing_summary, "conversation_messages": conversation_messages})
+        new_summary = self.m.invoke(summary_messages)
+        self.history.insert(0, SystemMessage(content=new_summary.content))
+        self.ts_last_accessed =  datetime.now()
+
+    def clear(self) -> None:
+        self.history.clear()
+
+    @staticmethod
+    def get_chat_history(session_id: str, db_url: str, model: BaseChatModel, k: int = 4):
+        return PostgresWindowConversationSummaryHistory(session_id=session_id, db_url=db_url, model=model, k=k)
+
+    @staticmethod
+    def create_chain_with_history(rag_chain, db_url: str, model: BaseChatModel, var_input: str, var_history: str, k: int=4):
+        return RunnableWithMessageHistory(
+            rag_chain,
+            get_session_history=lambda session_id: PostgresWindowConversationSummaryHistory.get_chat_history(session_id, db_url=db_url, model=model, k=k),
+            input_messages_key=var_input,
+            history_messages_key=var_history,
+            history_factory_config=[
+                ConfigurableFieldSpec(id="session_id", annotation=str, name="Session Id", description="Conversation identifier")
+            ]
+        )        
