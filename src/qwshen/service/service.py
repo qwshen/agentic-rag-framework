@@ -11,6 +11,7 @@ from qwshen.common.component import Runner
 from qwshen.common.component import Creator
 from qwshen.common.logging import RagLogger
 from qwshen.common.chat_history import BufferWindowConversionHistory, BufferWindowConversationSummaryHistory, PostgresWindowConversationHistory, PostgresWindowConversationSummaryHistory
+from langchain_core.runnables.history import RunnableWithMessageHistory
 
 from .types import ServiceRetrieval, ServiceRetrievalAgent, ServiceRethinkingAgent, ServiceReasoningAgent, ContextServicePrompt, \
     ContextServiceGeneration, ContextServiceAgentivity, ServiceRunner
@@ -30,6 +31,8 @@ class ContextService(ServiceRunner):
         self._prompt_variables = None
         self._document_retriever = None
 
+        self._chat_history = None
+
     def run(self):
         prompt_template, self._prompt_variables = ContextServicePrompt.create(self._prompt.prompt.actor)
         if self._prompt.with_history.enabled and self._prompt_variables.var_history is None:
@@ -41,7 +44,7 @@ class ContextService(ServiceRunner):
         
         agent_retrievers = [self._get_retriever(retrieval.retrieval, retrieval.store) for retrieval in self._retrieval.retrievals]
         agent_model = self._retrieval.agent_model
-        fallback_retriever = self._get_retriever(self._retrieval.fallback_retrieval.retrieval, self._retrieval.fallback_retrieval.store)
+        fallback_retriever = self._get_retriever(self._retrieval.fallback_retrieval.retrieval, self._retrieval.fallback_retrieval.store) if self._retrieval.fallback_retrieval is not None else None
         self._document_retriever = AgenticRetriever(agent_retrievers, agent_model, fallback_retriever, self._agentivity.query_refining, self._agentivity.document_grading)
         RagLogger.logger().info(f"retrievel used: {self._retrieval.get_name()}, for {self.name}")
 
@@ -94,6 +97,13 @@ class ContextService(ServiceRunner):
         else:
             self._rag_chain_with_source = RunnableMap(rag_chain_map) | prompt_template | chat_model
 
+        if isinstance(self._rag_chain_with_source, RunnableWithMessageHistory):
+            self._chat_history = self._rag_chain_with_source.get_session_history
+
+    def launch_chat_history(self, session_id: str):
+        if self._chat_history is not None:
+            self._chat_history(session_id)
+
     def process(self, user_query: str, kwargs: dict = {}) -> Iterator[Document]:
         RagLogger.logger().info(f"Processing user-query: {user_query}, with {self.name}")
         if self._rag_chain_with_source is None:
@@ -120,20 +130,20 @@ class SearchService(ServiceRunner):
     def __init__(self, name: str, retrieval: Retrieval, store: ContextStore):
         super().__init__(name)
 
-        if retrieval.actor.target_store != store.name:
-            raise ValueError(f"Retrieval target store: {retrieval.actor.target_store} does not match with context store: {store.name}")
+        if "document_store" in retrieval.actor.kwargs:
+            if retrieval.actor.kwargs.get("document_store") != store.name:
+                raise ValueError(f"""Retrieval document store: {retrieval.actor.kwargs.get("document_store")} does not match with context store: {store.name}""")
         self._retrieval = retrieval
         self._store = store
         self._document_retriever = None
 
     def run(self):
         RagLogger.logger().info(f"retrievel used: {self._retrieval.name} with store: {self._store.name}, for {self.name}")
-        document_retriever = self._get_retriever(self._retrieval.actor, self._store)
-        self._document_retriever = document_retriever
+        self._document_retriever = self._get_retriever(self._retrieval, self._store)
 
-    def process(self, user_query: str, kwargs: dict = {}) -> Iterator[Document]:
+    def process(self, user_query: str, search_kwargs: dict = {}) -> Iterator[Document]:
         RagLogger.logger().info(f"Processing user-query: {user_query}, with {self.name}")
-        for documents in self._document_retriever.stream(user_query, **kwargs):
+        for documents in self._document_retriever.get_retriever().stream(user_query, **search_kwargs):
             for document in documents:
                 yield document
 
@@ -179,7 +189,7 @@ class ServiceOperator(Runner):
     def _prepare_retrieval_agent(self, context: ServiceContext) -> ServiceRetrievalAgent:
         retrievals = [self._prepare_retrieval(retrieval_name) for retrieval_name in context.ref_retrievals]
         agent_model = self._models.get(context.agent.ref_model, None)
-        fallback_retrieval = self._prepare_retrieval(context.fallback_retrieval)
+        fallback_retrieval = self._prepare_retrieval(context.fallback_retrieval) if context.fallback_retrieval is not None else None
         return ServiceRetrievalAgent(retrievals, agent_model, fallback_retrieval)
 
     def _prepare_agentivity(self, agentivity: ServiceAgentivity) -> ContextServiceAgentivity:
@@ -231,8 +241,8 @@ class ServiceOperator(Runner):
         serviceRetrieval = self._prepare_retrieval(search.definition.retrieval)
         return SearchService(search.name, serviceRetrieval.retrieval, serviceRetrieval.store)
 
-    def _prepare_retrieval(self, rerieval_name: str) -> ServiceRetrieval:
-        retrieval = self._retrievals.get(rerieval_name)
+    def _prepare_retrieval(self, retrieval_name: str) -> ServiceRetrieval:
+        retrieval = self._retrievals.get(retrieval_name)
         document_store = retrieval.actor.kwargs.get("document_store", None)
         if document_store is not None:
             stores = [store for store in self._context_stores.values() if store.name == document_store]

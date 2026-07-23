@@ -2,11 +2,15 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from langchain_core.tools import Tool
+from langchain_core.vectorstores import VectorStoreRetriever
 
 class RetrievalTool(ABC):
     def __init__(self, name: str, description: str):
         self._name = name
         self._description = description
+
+    def get_retriever(self) -> VectorStoreRetriever:
+        return None
 
     @abstractmethod
     def get_tool(): Tool

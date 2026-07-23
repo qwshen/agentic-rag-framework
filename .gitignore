@@ -3,5 +3,5 @@
 *.egg-info/
 build/packages
 logs/
-nudges/
+portfolio_nudges/
 it-learning/

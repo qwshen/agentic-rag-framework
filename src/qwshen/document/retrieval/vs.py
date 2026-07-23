@@ -1,5 +1,6 @@
 from langchain_core.tools import Tool
 from langchain_core.tools.retriever import create_retriever_tool
+from langchain_core.vectorstores import VectorStoreRetriever
 from typing import Any
 
 from qwshen.definition.types import ContextStore
@@ -12,6 +13,9 @@ class VSRetriever(RetrievalTool, Creator):
 
         v_store = self._create(document_store.actor.type, document_store.actor.kwargs)
         self._vs = v_store.interface().as_retriever(search_type=search_type, search_kwargs=search_kwargs)
+
+    def get_retriever(self) -> VectorStoreRetriever:
+        return self._vs
 
     def get_tool(self) -> Tool:
         return create_retriever_tool(self._vs, name=self._name, description=self._description)

@@ -51,8 +51,8 @@ class DbLoader(DocumentLoader):
             columns = rows.keys() if len(columns) <= 0 else self._content_columns
             for row in rows:
                 doc = Document(
-                     page_content = "\r\n".join([f"{column}: {row[column]}" for column in columns]),
-                     metadata = { column: row[column] for column in self._metadata_columns }
+                     page_content = "\r\n".join([f"{column}: {str(row[column])}" for column in columns]),
+                     metadata = { column: str(row[column]) for column in self._metadata_columns }
                 )
                 documents.append(doc)
         handlerCallback(documents, "")

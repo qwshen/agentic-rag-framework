@@ -153,7 +153,7 @@ class Search:
 
     @staticmethod
     def from_dict(data: Dict) -> 'Search':
-        return Search(name=data['name'], definition=SearchActor.from_dict(data.get('definition', {})), access_roles=data.get('access_roles', []))    
+        return Search(name=data['name'], definition=SearchActor.from_dict(data.get('definition', {})), access_roles=data.get('access_roles', ["*"]))    
 
 @dataclass(frozen=True)
 class ServicePromptWithHistory:
@@ -194,7 +194,7 @@ class ServiceContext:
 
     @staticmethod
     def from_dict(data: Dict) -> 'ServiceContext':
-        return ServiceContext(ref_retrievals=data['ref_retrievals'], agent=ServiceContextAgent.from_dict(data.get("agent", {})), fallback_retrieval=data['fallback_retrieval'])
+        return ServiceContext(ref_retrievals=data['ref_retrievals'], agent=ServiceContextAgent.from_dict(data.get("agent", {})), fallback_retrieval=data.get('fallback_retrieval', None))
 
 @dataclass(frozen=True)
 class ServiceGenerationAgent:
@@ -292,7 +292,7 @@ class Service:
 
     @staticmethod
     def from_dict(data: Dict) -> 'Service':
-        return Service(name=data['name'], definition=ServiceActor.from_dict(data['definition']), access_roles=data.get('access_roles', []))
+        return Service(name=data['name'], definition=ServiceActor.from_dict(data['definition']), access_roles=data.get('access_roles', ["*"]))
 
 
 @dataclass(frozen=True)

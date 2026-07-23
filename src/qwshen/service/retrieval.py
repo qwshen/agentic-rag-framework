@@ -31,7 +31,7 @@ class AgenticRetriever(BaseRetriever):
         elif agent_model is not None:
             am = Creator.create(agent_model.actor.type, agent_model.actor.kwargs)
             self._agent = create_agent(model = am, tools = [retriever.get_tool() for retriever in retrievers])
-            self._fallback_agent = create_agent(model = am, tools = [fallback_retriever.get_tool()])
+            self._fallback_agent = create_agent(model = am, tools = [fallback_retriever.get_tool()]) if fallback_retriever is not None else None
         else:
             self._retrieval_tool = retrievers[0]
             self._fallback_tool = fallback_retriever
@@ -132,12 +132,12 @@ class AgenticRetriever(BaseRetriever):
                 break
             query = refined_query
 
-        if not documents_grading_result or len(documents) == 0:
+        if (self._fallback_agent is not None or self._fallback_tool is not None) and not documents_grading_result or len(documents) == 0:
             documents, documents_grading_result = self.__fallback_relevent_documents(query)
         return query, documents, documents_grading_result, chat_history
 
     def __fallback_relevent_documents(self, query: str):
-        results = None
+        results = []
         if self._fallback_agent is not None:
             result = self._fallback_agent.invoke(
                 {
