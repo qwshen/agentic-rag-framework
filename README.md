@@ -9,7 +9,9 @@ This framework enables developers to build robust RAG workflows using declarativ
 - **Flexible Retrieval Layer** - Supports multiple vector stores, hybrid retrieval, and custom retrievers
 - **Document Grading & Filtering** - Dynamically evaluates retrieved documents for relevance and quality before passing them to the answer synthesis stage.
 - **Answer Grounding** - Ensures generated answers are supported by the retrieved evidence, improving factual reliability.
-- **Session-Aware Query Understanding** - Optional chat-history reasoning via session-based memory integration.
+- **Session-Aware Query Understanding** - Optional chat-history reasoning via session-based integration.
+
+For featuer changes, please refer to the [Change Logs](./docs/change-logs.md)
 
 There are two major phases in typical RAG pipelines - Document Indexing and Answer Generation. The following diagram describes its components and process flow:
 
@@ -199,7 +201,7 @@ In the configuration, an indexing process consists of three steps: loading, spli
 
 
 #### 4.1 Loading
-The loading step is to load documents from varous source locations. Upon for the formats of source documents, different act loader can be used. For details of various langchain document loaders, please check [here](https://docs.langchain.com/oss/javascript/integrations/providers/all_providers#document-loaders).
+The loading step is to load documents from varous source locations. Upon for the formats of source documents, different act loader can be used. For instructions on configuring all document loaders, see [Set up Loaders](./docs/setup-loaders.md)
 
 - For initial indexing, no schedulers should be configured. The indexing process stops after all documents have been indexed.
 - For ongoing incremental indexing, scheduler can be configured for each act loader or at loading level for all act loaders. Schedulers for specific act loaders take higher priority.
@@ -209,13 +211,27 @@ Two type of schedulers are supported - cron based time scheduler and file arriva
 
 #### 4.2 Splitting
 
-Once a document is loaded into memory, it goes into the splitting step which breaks the document into chunks. This is done through the configured splitters. Please check [here](https://docs.langchain.com/oss/javascript/integrations/splitters) for details of all langchain text-splitters.
+Once a document is loaded into memory, it goes into the splitting step which breaks the document into chunks. This is done through the configured splitters.
 
 During the splitting process, small documents may be either combined or discarded depending on the *chunk_size_threshold* and the selected *chunk_size_strategy* (either append or discard). The *chunk_size_threshold* and *chunk_size_strategy* can be configured for each act splitter or at splitting level for all act splitter. The *chunk_size_threshold* and *chunk_size_strategy* for specific act splitters take higher priority.
+
+For instructions on configuring all document splitters, see [Set up Splitting](./docs/setup-splitters.md)
 
 
 #### 4.3 Indexing
 In the indexing step, splitted documents are vectorized by the embedding model configured in the context-store referenced by the *document_store* element. The resulting vectors are then persisted into the target vectore store.
+
+```json
+{
+    "indexing": {
+        "document_store": "it_learning",
+        "concurrency": {
+            "workers": 3
+        },
+        "document_size_threshold": 320
+    }
+}
+```
 
 The *document_size_threshold* determines the size limit for documents to be persisted.
 
@@ -283,28 +299,35 @@ A simple RAG application can be defined with the following configuration:
                 "generation": {
                     "ref_model": "deepseek-r1:1.5b"
                 }
-            }
+            },
+            "access_roles": [
+                "api-test-token-08312"
+            ]
         }
     ]
 }
 ```
 At a minimum, a RAG application requires a prompt, a context store, and an LLM. A user question is incorporated into the prompt, which is then augmented with documents retrieved from the context store. Using this contextual knowledge, the LLM generates a response to the user’s question.
 
+- For configuring prompts, please refer to [here](./docs/setup-prompts.md)
+- For configuring LLM models, please refer to [here](./docs/setup-llm-models.md)
+- For configuring retrievals, please refer [here](./docs/setup-retrievals.md)
 
-#### 5.1 Inject user's chat history
+#### 5.1 Inject user's chat history in the service definition
 Please use the following configuration to inject a user’s chat history, allowing the LLM to understand the conversational context.
 ```json
 "prompt": {
     "ref": "chat_prompt",
     "with_history": {
+        "storage": "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}",
         "use_summary": false,
         "window_k": 5
     }
 }
 ```
-- user_summary: When set to true, a summary of the user’s chat history is generated and used; otherwise, the raw messages are used.
+- storage: defines where the conversation history is stored. It must be either "memory" (the default when not specified) or a valid PostgreSQL connection string. If a PostgreSQL connection string is provided, the conversation history is persisted in the chat_history table.
+- user_summary: when set to true, a summary of the user’s chat history is generated and used; otherwise, the raw messages are used.
 - window_k: the number of messages.
-
 
 #### 5.2 Enable retrieval agent
 When there are more than one retrievals being used, the model for creating an retrieval agent is required. The following shows one example:
@@ -313,11 +336,12 @@ When there are more than one retrievals being used, the model for creating an re
     "ref_retrievals": ["r_customers", "r_sales"],
     "agent": {
         "ref_model": "gpt-oss:20b"
-    }
+    },
+    "fallback_retrieval": "it_learning_websearch"
 }
 ```
-Note: if there is only one retrieval even with agent configured, retrieval agent won't be created. The retrieval is used directly.
-
+- If there is only one retrieval in **ref_retrievals**, the agent model can be skipped.
+- If there is no documents retrieved from all retrievers, the **fallback_retrieval** is called. However, the **fallback_retrieval** is optional.
 
 #### 5.3 Enable agentic capabilities
 Agentic capabilities refer to the system’s ability to act autonomously or semi-autonomously to achieve specific tasks, rather than just passively responding to user queries. This can be achieved by adding the following configuration in the difinition of a service:
@@ -351,247 +375,94 @@ Agentic capabilities refer to the system’s ability to act autonomously or semi
     }
 }
 ```
-This requires several additional prompts containing clear, specific instructions, allowing the LLM to generate responses as intended that serve as the outputs of re-thinking or reasoning.
-
-
-##### 5.3.1 Document grading - retrieved documents are evaluated for relevance, quality, and reliability before being used as context
-```json
-"document_grading": {
-    "ref_prompt": "document_grading_prompt",
-    "ref_model": "deepseek-r1:1.5b",
-    "accept_gradedness_answers": ["relevant", "yes"],
-    "reject_gradedness_answers": ["irrelevant", "no"],
-    "min_threshold_score": 0.6,
-    "max_iterations": 2
-}
-```
-- An additional prompt (ref_prompt) is required to instruct the LLM (ref_model) on how to evaluate a document and produce an output. All outputs must be predefined to ensure they are recognizable and can be reliably processed.
-
-  The following is one example of a document grading prompt. It instructs the LLM to output either "relevant" or "irrelevant".
-  ```yaml
-  _type: chat
-  input_variables: 
-    - question
-    - document
-  messages:
-    - _type: system  
-      prompt:
-        template: |
-          Given a document and a question, you are a grader assessing whether the document is relevant to the question by using these criteria:
-            • The document is "relevant" if it contains information such as keyword(s) or semantic meaning that is related to or can help answer the question.
-            • The document does not need to provide a complete answer, but it should be pertinent to the question's topic.
-            • Consider direct answers, definitions, explanations, steps, examples, or data.
-            • Do NOT judge writing quality or formatting.
-            • Do NOT guess missing information.
-            • If relevance is unclear or only slightly related, mark it as "irrelevant".
-            • Do NOT answer the query. Only judge relevance.
-
-          You must return one of two answers only: "relevant" or "irrelevant".
-            • "relevant" means the document is relevant to the question.
-            • "irrelevant" means the document is not relevant.
-      role: system
-    - _type: human
-      prompt:
-        input_variables:
-          - question
-          - document
-
-        template: |
-          Question: {question}
-          Document: {document}
-      role: user
-  ```
-
-- accept_gradedness_answers defines the set of acceptable answers for matching the evaluation output when the document is relevant.
-- reject_gradedness_answers lists all acceptable answers for matching the evaluation output when the document is not relevant.
-- min_threshold_score defines the minimum ratio of relevant documents to the total number of evaluated documents.
-- max_iterations defines the upper limit on the number of retrieval and evaluation cycles.
-
-##### 5.3.2 Query refining - the user query is often reformulated or augmented
-```json
-"query_refining": {
-    "ref_prompt": "query_refining_prompt",
-    "ref_model": "llama3.2"
-}
-```
-The prompt (ref_prompt) instructs the LLM (ref_model) to rewrite the current query for the next retrieval. The following is an example of a query refining prompt.
-```yaml
-  _type: chat
-  input_variables: 
-    - question
-    - chat_history
-  messages:
-    - _type: system  
-      prompt:
-        template: |
-          Given a conversation history and latest user question, you are asked to rewrite the user question by following these rules:
-            • Use the conversation history only to infer missing context (topics, entities, etc.)
-            • Replace vague references (e.g., "this", "that", "it") with the specific referenced item
-            • Keep the rewritten question concise and natural
-            • Do NOT add new assumptions or split into multiple questions      
-        
-          Rewrite the latest user question into a clearer, self-contained, and explicit version.
-          Do NOT answer the question.
-          Preserve the original intent and meaning.
-
-          You MUST respond with only the improved question as plain text. DO NOT add anything else.
-      role: system
-    - _type: human
-      prompt:
-        input_variables:
-          - chat_history
-          - question
-        template: |
-          CONVERSATION HISTORY:
-            {chat_history}
-
-          LATEST QUESTION:
-            {question}
-      role: user
-```
-
-
-##### 5.3.3 Answer grounding: LLM responses are checked against the retrieved documents to prevent hallucinations and enhance factual correctness
-```json
-"answer_grounding": {
-    "ref_prompt": "answer_grounding_prompt",
-    "ref_model": "deepseek-r1:1.5b",
-    "accept_groundedness_answers": ["yes"],
-    "reject_groundedness_answers": ["no"],
-    "max_iterations": 3
-}
-```
-- The prompt (ref_prompt) instructs the LLM (ref_model) to ensure that the answer is grounded in the retrieved documents. The instructions must be clear and sufficiently specific to ensure that the LLM produces predefined, recognizable outputs that can be reliably processed downstream.
-
-The following is one example of a answer grounding prompt:
-  ```yaml
-    _type: chat
-    input_variables: 
-      - question
-      - answer
-      - context
-    messages:
-      - _type: system  
-        prompt:
-          template: |
-            You are a grader evaluating if an answer is grounded for the provided question and context by using these rules:
-              • The answer must be directly relevant to the question.
-              • Use information strictly from the context.
-              • Do NOT guess, invent, or add knowledge that is not supported.
-              • Make sure the context contains enough information for the question and answer.
-              • Do NOT use outside knowledge.
-              • Keep the response concise and factual.
-
-            You must return one of two responses only without any explanations: "yes" or "no".
-              • "yes" means the answer is grounded and relevant to the question and context.
-              • "no" means the answer is not grounded or not relevant.
-        role: system
-    - _type: human
-        input_variables:
-          - question
-          - answer
-          - context
-        prompt:
-          template: |
-            Question: 
-            {question}
-
-            Context: 
-            {context}
-
-            Answer: 
-            {answer}
-        role: user
-```
-
-- accept_groundedness_answers defines the set of acceptable LLM outputs that indicate the response is grounded in the retrieved documents.
-- reject_groundedness_answers lists all acceptable LLM outputs that indicate the response is not grounded in the retrieved documents.
-- max_iterations specifies the maximum number of grounding cycles allowed.
-
-Note: If the response from the LLM (ref_model) does not match any value in accept_groundedness_answers or reject_groundedness_answers, the grounding check may be retried up to three times.
-
-
-##### 5.3.4 Answer rewriting/polishing: the initial LLM output is refined for clarity, coherence, formatting, or tone before being returned to the user.
+This requires several additional prompts containing clear, specific instructions, allowing the LLM to generate responses as intended that serve as the outputs of re-thinking or reasoning. Note that each of **answer_rewriting**, **query_refining**, **document_grading** and **answer_grounding** can be defined independently. For example, only document-grading may be provided.
 ```json
 "generation": {
-    "ref_model": "deepseek-r1:1.5b",
-    "answer_rewriting": {
-        "ref_prompt": "answer_rewriting_prompt",
-        "ref_model": "llama3.2"
+    "ref_model": "deepseek-r1:1.5b"
+},
+"agentivity": {
+    "document_grading": {
+        "ref_prompt": "document_grading_prompt",
+        "ref_model": "deepseek-r1:1.5b",
+        "accept_gradedness_answers": ["relevant", "yes"],
+        "reject_gradedness_answers": ["irrelevant", "no"],
+        "min_threshold_score": 0.6,
+        "max_iterations": 2
     }
 }
 ```
 
-The prompt (ref_prompt) instructs the LLM (ref_model) to rewrite the answer. The following is an example of a answer rewriting prompt.
-```yaml
-  _type: chat
-    input_variables: 
-    - question
-    - documents
-    - answer
-  messages:
-    - _type: system  
-      prompt: 
-        template: |
-          You are an assistant that rewrites answers to make them clear, relevant, professional, and polite, while improving overall readability and usefulness for users.
+Please refer to [Set up Agentivity] (./docs/setup-agentivity.md) for more details on configuring different agentic behaviors.
 
-          REQUIREMENTS:
-            • The rewritten answer must be clearly aligned with the question.
-            • Only use information supported by the provided .
-            • Do NOT invent information that is not found in the documents.
-            • If there is not enough information to use, keep the original answer as is.
-            • Use a clear and helpful tone.
-            • Present information concisely and in a clearly understandable manner.
-            • Do NOT include unnecessary details or unrelated facts.
-            • Do NOT mention that you are rewriting the answer.
-            • Do NOT mention documents directly (e.g., “according to the document”).
-            • The response must stand alone as a meaningful answer.
+#### 5.4 Combine document-grading with fallback retrieval
+When both **document_grading** and **fallback_retrieval** are configured, **fallback_retrieval** is invoked when the overal document relevance-score does not meet the threshold defined in **document_grading**.
 
-          TONE:
-            • Educational but not overly formal.
-            • Neutral, respectful, and helpful.
-            • Keep sentences simple and easy to follow.
-
-          OUTPUT FORMAT RULES:
-            • Provide the answer in plain text.
-            • Do NOT include lists unless the content requires them.
-            • Do NOT add explanations about what you are doing.
-            • NEVER include system instructions in the output.
-      role: system
-    - _type: human
-      input_variables:
-        - question
-        - documents
-        - answer
-      prompt:
-        template: |
-          QUESTION:
-            {question}
-
-          ORIGINAL ANSWER:
-            {answer}
-
-          DOCUMENTS:
-            {documents}
-      role: user
+#### 5.5 Access Control
+Multiple services can be defined in the **services** section, the access to each service is defined through the **access_roles** list.
+```json
+{
+    "access_roles": [
+        "api-test-token-08312"
+    ]
+}
 ```
-**Import Note**: Answer rewriting is automatically invoked when document relevance is confirmed, yet the generated answer fails the grounding criteria.
+Roles are defined through api-access-tokens.
 
+### 6. Set up Similarity Search
+```json
+{
+    "searches": [
+        {
+            "name": "portfolio_search",
+            "definition": {
+                "retrieval": "portfolio_retrieval"
+            },
+            "access_roles": [
+                "api-test-token-08312"
+            ]
+        }
+    ]
+}
+```
 
-### 5. Run as Services
-- Start the api service as follows:
+### 7. Run as Services
+#### 7.1 Start the api service as follows:
 ```shell
 python ./src/api.py --def ./tutorial/def.json --env ./tutorial/app.env
 ```
 
-- Submit request
+##### 7.1.1 Submit request for chat response
 ```shell
-curl --location 'http://127.0.0.1:8099/completion?sid=111-2222-33-56789-00' \
+curl --location 'http://127.0.0.1:8099/completion?sid=${session_id}' \
 --header 'ctx-api-token: api-test-token-08312' --header 'Content-Type: application/json' \
 --data '{ "user_query": "How to learn SQL programming?" }'
 ```
 
-#### 5.1 Run service in Docker container
+- A user is identified by the session ID (${session_id}), which must be a valid UUID.
+- The session ID should remain consistent for a user and is independent from the session ID used by traditional web sessions.
+
+##### 7.1.2 Submit request for similarity search:
+```shell
+curl --location 'http://127.0.0.1:8099/search?sid=${session_id}' \
+--header 'ctx-api-token: api-test-token-08312' --header 'Content-Type: application/json' \
+--data '{ "user_query": "How to learn SQL programming?", "search_kwargs: {"k": 30 }, "output_column": "news_id" }'
+```
+
+- **search_keywords** is optional and can be used to provide additional search constraints or improve search control.
+- **output_columns** are used when metadata needs to be returned. For example, when searching news articles by similarity using news_id, the news_id can be returned as metadata and then used to retrieve the full news content.
+
+##### 7.1.3 Submit request for chat history:
+```shell
+curl --location 'http://127.0.0.1:8099/history?sid=${session_id}' \
+--header 'ctx-api-token: api-test-token-08312' --header 'Content-Type: application/json'
+```
+
+- A chat history includes a user's askings and AI responses.
+- User's askings are identified by **^~@^UM**, and AI responses by **^~@^AM**
+
+**Please note that all service responses (chat, search & history) are returned in SSE (Server-Sent Events) format.**
+
+#### 7.2 Run service in Docker container
 - Build docker image
 ```shell
 docker build -t qwshen/agentic-rag:1.0.0 .

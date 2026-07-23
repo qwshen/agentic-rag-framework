@@ -4,6 +4,7 @@ from fastapi import FastAPI, HTTPException
 from starlette.requests import Request
 from sse_starlette import EventSourceResponse
 from functools import reduce
+from langchain_core.messages.human import HumanMessage
 
 from qwshen.common.logging import RagLogger
 from qwshen.common.chat_history import ConversationHistory
@@ -77,9 +78,10 @@ class ContextAPI(FastAPI):
                 raise HTTPException(401, f"Context-Service not authroized - {session_id}")
 
             context_service.launch_chat_history(session_id)
-            
+
             RagLogger.logger().debug(f"fetching conversation history for {session_id}")
             for message in ConversationHistory.get_messages(session_id=session_id):
+                yield "^~@^HM" if isinstance(message, HumanMessage) else "^~@^AM"
                 yield message.content
             RagLogger.logger().debug(f"fetching conversation history for {session_id} done")    
         except Exception as e:

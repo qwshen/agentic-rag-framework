@@ -154,9 +154,17 @@
                         "fallback_retrieval": "it_learning_websearch"
                     },
                     "generation": {
-                        "ref_model": "it_learning_writing"
+                        "ref_model": "it_learning_writing",
+                        "answer_rewriting": {
+                            "ref_prompt": "it_learning_answer_rewriting",
+                            "ref_model": "it_learning_writing"
+                        }                        
                     },
                     "agentivity": {
+                        "query_refining": {
+                            "ref_prompt": "it_learning_query_refining",
+                            "ref_model": "it_learning_writing"
+                        },                        
                         "document_grading": {
                             "ref_prompt": "it_learning_document_grading",
                             "ref_model": "it_learning_reasoning",
@@ -164,7 +172,15 @@
                             "reject_gradedness_answers": ["irrelevant", "no"],
                             "min_threshold_score": 0.6,
                             "max_iterations": 2
-                        }
+                        },
+                        "answer_grounding": {
+                            "ref_prompt": "it_learning_answer_grounding",
+                            "ref_model": "it_learning_reasoning",
+                            "accept_groundedness_answers": ["yes"],
+                            "reject_groundedness_answers": ["no"],
+                            "min_threshold_score": 0.6,
+                            "max_iterations": 2
+                        }                        
                     }                    
                 }
             }

@@ -27,7 +27,7 @@
                         "actor": {
                             "type": "qwshen.document.loading.db.DbLoader",
                             "kwargs":{
-                                "connection": "postgresql+psycopg://pn_admin:password123@localhost:6024/portfolio_nudges",
+                                "connection": "postgresql+psycopg://langchain:langchain@localhost:6024/langchain",
                                 "table_name": "ticker_news",
                                 "columns": { 
                                     "content": ["title", "related_ticker", "summary"],
