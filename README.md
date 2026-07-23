@@ -235,10 +235,10 @@ In the indexing step, splitted documents are vectorized by the embedding model c
 
 The *document_size_threshold* determines the size limit for documents to be persisted.
 
-Use the concurrency configuration to spin up additional vectorizers to relieve back pressure from the document splitting step.
+Use the **concurrency** configuration to spin up additional vectorizers to relieve back pressure from the document splitting step.
 
 
-### 5. Setup a RAG-Chat Application
+### 5. Construct a RAG-Chat Application
 A simple RAG application can be defined with the following configuration:
 ```json
 "service_def": {
@@ -325,9 +325,9 @@ Please use the following configuration to inject a user’s chat history, allowi
     }
 }
 ```
-- storage: defines where the conversation history is stored. It must be either "memory" (the default when not specified) or a valid PostgreSQL connection string. If a PostgreSQL connection string is provided, the conversation history is persisted in the chat_history table.
-- user_summary: when set to true, a summary of the user’s chat history is generated and used; otherwise, the raw messages are used.
-- window_k: the number of messages.
+- **storage**: defines where the conversation history is stored. It must be either "memory" (the default when not specified) or a valid PostgreSQL connection string. If a PostgreSQL connection string is provided, the conversation history is persisted in the chat_history table.
+- **user_summary**: when set to true, a summary of the user’s chat history is generated and used; otherwise, the raw messages are used.
+- **window_k**: the number of messages.
 
 #### 5.2 Enable retrieval agent
 When there are more than one retrievals being used, the model for creating an retrieval agent is required. The following shows one example:
@@ -340,8 +340,8 @@ When there are more than one retrievals being used, the model for creating an re
     "fallback_retrieval": "it_learning_websearch"
 }
 ```
-- If there is only one retrieval in **ref_retrievals**, the agent model can be skipped.
-- If there is no documents retrieved from all retrievers, the **fallback_retrieval** is called. However, the **fallback_retrieval** is optional.
+- If only one retrieval is defined in **ref_retrievals**, the agent model can be omitted.
+- If no documents are retrieved from any of the configured retrievers, **fallback_retrieval** is invoked. However, **fallback_retrieval** is optional.
 
 #### 5.3 Enable agentic capabilities
 Agentic capabilities refer to the system’s ability to act autonomously or semi-autonomously to achieve specific tasks, rather than just passively responding to user queries. This can be achieved by adding the following configuration in the difinition of a service:
@@ -392,9 +392,9 @@ This requires several additional prompts containing clear, specific instructions
 }
 ```
 
-Please refer to [Set up Agentivity] (./docs/setup-agentivity.md) for more details on configuring different agentic behaviors.
+Please refer to [Configure Agentivity](./docs/setup-agentivity.md) for more details on configuring different agentic behaviors.
 
-#### 5.4 Combine document-grading with fallback retrieval
+#### 5.4 Combine document-grading and fallback-retrieval
 When both **document_grading** and **fallback_retrieval** are configured, **fallback_retrieval** is invoked when the overal document relevance-score does not meet the threshold defined in **document_grading**.
 
 #### 5.5 Access Control
@@ -406,7 +406,7 @@ Multiple services can be defined in the **services** section, the access to each
     ]
 }
 ```
-Roles are defined through api-access-tokens.
+Roles are defined through **api-access-tokens**.
 
 ### 6. Set up Similarity Search
 ```json
@@ -434,31 +434,32 @@ python ./src/api.py --def ./tutorial/def.json --env ./tutorial/app.env
 ##### 7.1.1 Submit request for chat response
 ```shell
 curl --location 'http://127.0.0.1:8099/completion?sid=${session_id}' \
---header 'ctx-api-token: api-test-token-08312' --header 'Content-Type: application/json' \
+--header 'ctx-api-token: ${api-access-token}' --header 'Content-Type: application/json' \
 --data '{ "user_query": "How to learn SQL programming?" }'
 ```
 
+- The authentication is through the **api-access-token** which is provided and delivered by the server.
 - A user is identified by the session ID (${session_id}), which must be a valid UUID.
 - The session ID should remain consistent for a user and is independent from the session ID used by traditional web sessions.
 
 ##### 7.1.2 Submit request for similarity search:
 ```shell
 curl --location 'http://127.0.0.1:8099/search?sid=${session_id}' \
---header 'ctx-api-token: api-test-token-08312' --header 'Content-Type: application/json' \
+--header 'ctx-api-token: ${api-access-token}' --header 'Content-Type: application/json' \
 --data '{ "user_query": "How to learn SQL programming?", "search_kwargs: {"k": 30 }, "output_column": "news_id" }'
 ```
 
 - **search_keywords** is optional and can be used to provide additional search constraints or improve search control.
-- **output_columns** are used when metadata needs to be returned. For example, when searching news articles by similarity using news_id, the news_id can be returned as metadata and then used to retrieve the full news content.
+- **output_column** is used when metadata needs to be returned. For example, when searching news articles by similarity using news_id, the news_id can be returned as metadata and then used to retrieve the full news content.
 
 ##### 7.1.3 Submit request for chat history:
 ```shell
 curl --location 'http://127.0.0.1:8099/history?sid=${session_id}' \
---header 'ctx-api-token: api-test-token-08312' --header 'Content-Type: application/json'
+--header 'ctx-api-token: ${api-access-token}' --header 'Content-Type: application/json'
 ```
 
-- A chat history includes a user's askings and AI responses.
-- User's askings are identified by **^~@^UM**, and AI responses by **^~@^AM**
+- A chat history consists of user queries and AI responses.
+- User queries are identified by the marker **`^~@^UM`**, and AI responses are identified by the marker **`^~@^AM`**.
 
 **Please note that all service responses (chat, search & history) are returned in SSE (Server-Sent Events) format.**
 

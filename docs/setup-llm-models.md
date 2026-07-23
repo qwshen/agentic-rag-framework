@@ -1,6 +1,6 @@
 The model section defines the LLM models to be used and specifies where inference is performed, either locally or remotely.
 
-- Using OpenAI
+- Using OpenAI API
 ```json
 {
     "chat_models": [
@@ -20,7 +20,7 @@ The model section defines the LLM models to be used and specifies where inferenc
 }
 ```
 
-- Using ChatOllama
+- Using ChatOllama API
 ```json
 {
     "chat_models": [
