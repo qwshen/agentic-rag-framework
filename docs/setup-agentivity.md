@@ -46,10 +46,10 @@
       role: user
   ```
 
-- accept_gradedness_answers defines the set of acceptable answers for matching the evaluation output when the document is relevant.
-- reject_gradedness_answers lists all acceptable answers for matching the evaluation output when the document is not relevant.
-- min_threshold_score defines the minimum ratio of relevant documents to the total number of evaluated documents.
-- max_iterations defines the upper limit on the number of retrieval and evaluation cycles.
+- **accept_gradedness_answers** defines the set of acceptable answers for matching the evaluation output when the document is relevant.
+- **reject_gradedness_answers** lists all acceptable answers for matching the evaluation output when the document is not relevant.
+- **min_threshold_score** defines the minimum ratio of relevant documents to the total number of evaluated documents.
+- **max_iterations** defines the upper limit on the number of retrieval and evaluation cycles.
 
 ##### 2. Query refining - the user query is often reformulated or augmented
 ```json
@@ -148,9 +148,9 @@ The following is one example of a answer grounding prompt:
         role: user
 ```
 
-- accept_groundedness_answers defines the set of acceptable LLM outputs that indicate the response is grounded in the retrieved documents.
-- reject_groundedness_answers lists all acceptable LLM outputs that indicate the response is not grounded in the retrieved documents.
-- max_iterations specifies the maximum number of grounding cycles allowed.
+- **accept_groundedness_answers** defines the set of acceptable LLM outputs that indicate the response is grounded in the retrieved documents.
+- **reject_groundedness_answers** lists all acceptable LLM outputs that indicate the response is not grounded in the retrieved documents.
+- **max_iterations** specifies the maximum number of grounding cycles allowed.
 
 Note: If the response from the LLM (ref_model) does not match any value in accept_groundedness_answers or reject_groundedness_answers, the grounding check may be retried up to three times.
 
@@ -219,4 +219,4 @@ The prompt (ref_prompt) instructs the LLM (ref_model) to rewrite the answer. The
             {documents}
       role: user
 ```
-**Import Note**: Answer rewriting is automatically invoked when document relevance is confirmed, yet the generated answer fails the grounding criteria.
+**Import Note**: Answer rewriting if defined is automatically invoked when document relevance is confirmed, yet the generated answer fails the grounding criteria.
