@@ -2,7 +2,7 @@
 - Initial release of the application.
 
 #### 2. v0.1.5 - feature enhancements (July 2026)
-- added support for loading data from databases.
-- added agent-based Internet search capabilities.
-- added persistent chat history storage using PostgreSQL.
-- fixed multiple bugs and improved overall stability.
+- Added support for loading data from databases.
+- Added agent-based Internet search capabilities.
+- Added persistent chat history storage using PostgreSQL.
+- Fixed multiple bugs and improved overall stability.
