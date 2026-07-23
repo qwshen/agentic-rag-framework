@@ -463,7 +463,7 @@ curl --location 'http://127.0.0.1:8099/history?sid=${session_id}' \
 
 **Please note that all service responses (chat, search & history) are returned in SSE (Server-Sent Events) format.**
 
-#### 7.2 Run service in Docker container
+#### 7.2 Run services in Docker container
 - Build docker image
 ```shell
 docker build -t qwshen/agentic-rag:1.0.0 .
