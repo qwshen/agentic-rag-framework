@@ -415,7 +415,7 @@ Roles are defined through **api-access-tokens**.
         {
             "name": "portfolio_search",
             "definition": {
-                "retrieval": "portfolio_retrieval"
+                "ref_retrieval": "portfolio_retrieval"
             },
             "access_roles": [
                 "api-test-token-08312"

@@ -143,7 +143,7 @@ class SearchActor:
 
     @staticmethod
     def from_dict(data: Dict) -> 'SearchActor':
-        return SearchActor(retrieval=data['retrieval'])
+        return SearchActor(retrieval=data['ref_retrieval'])
 
 @dataclass(frozen=True)
 class Search:
